@@ -8,8 +8,18 @@ from scipy.special import softmax
 import ta
 from datetime import datetime
 import json
+from db_helper import DatabaseHelper
+import os
+from dotenv import load_dotenv
 
 print("Initializing trading bot...")
+
+# Load environment variables
+load_dotenv()
+
+# Initialize database connection
+db = DatabaseHelper()
+db.connect()
 
 # Trading pair configuration
 symbol = 'BTC/USDT'
@@ -122,17 +132,16 @@ def save_bot_data(df, last_price, rsi_value, atr_value):
         win_rate = (paper_trading['win_trades'] / total_trades * 100) if total_trades > 0 else 0
         roi = ((paper_trading['balance'] / paper_trading['initial_balance']) - 1) * 100
 
-        # Get recent trades (last 24 hours)
+        # Get recent trades
         recent_trades = []
-        current_time = datetime.now()
-        for trade in paper_trading['trades'][-10:]:  # Keep last 10 trades
+        for trade in paper_trading['trades'][-10:]:
             trade_data = {
                 'side': trade['side'],
                 'entry': float(trade['entry']),
                 'exit': float(trade['exit']),
                 'pnl': float(trade['pnl']),
                 'reason': trade['reason'],
-                'timestamp': trade.get('timestamp', current_time.strftime("%Y-%m-%d %H:%M:%S"))
+                'timestamp': trade.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             }
             recent_trades.append(trade_data)
 
@@ -163,7 +172,7 @@ def save_bot_data(df, last_price, rsi_value, atr_value):
                 'current_atr': float(atr_value),
                 'sentiment_score': float(last_sentiment_score),
                 'funding_rate': float(current_funding_rate),
-                'volume_spike': volume_spike  # Now using native Python boolean
+                'volume_spike': volume_spike
             },
             'performance_summary': {
                 'last_update': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -173,19 +182,17 @@ def save_bot_data(df, last_price, rsi_value, atr_value):
                 'worst_trade': float(min((t['pnl'] for t in paper_trading['trades']), default=0)),
                 'avg_win_size': float(sum(t['pnl'] for t in paper_trading['trades'] if t['pnl'] > 0) / paper_trading['win_trades'] if paper_trading['win_trades'] > 0 else 0),
                 'avg_loss_size': float(sum(t['pnl'] for t in paper_trading['trades'] if t['pnl'] < 0) / (total_trades - paper_trading['win_trades']) if (total_trades - paper_trading['win_trades']) > 0 else 0)
-            },
-            'price_history': []
+            }
         }
-        
-        # Convert the last 100 candles to dict for the chart
+
+        # Add price history
         if not df.empty:
             history = df.tail(100).copy()
-            # Add RSI and ATR to the history dataframe
             history['rsi'] = calculate_rsi(df).tail(100)
             history['atr'] = calculate_atr(df).tail(100)
             history['timestamp'] = history['timestamp'].astype(str)
             
-            # Convert all numeric columns to native Python types
+            # Convert numeric columns to native Python types
             numeric_columns = ['open', 'high', 'low', 'close', 'volume', 'rsi', 'atr']
             for col in numeric_columns:
                 if col in history:
@@ -200,13 +207,12 @@ def save_bot_data(df, last_price, rsi_value, atr_value):
                     elif isinstance(value, np.bool_):
                         record[key] = bool(value)
             data['price_history'] = records
+
+        # Save to MongoDB
+        db.save_bot_data(data)
         
-        # Save to file
-        with open('bot_data.json', 'w') as f:
-            json.dump(data, f)
     except Exception as e:
         print(f"Error saving bot data: {e}")
-        # Print more detailed error information
         import traceback
         traceback.print_exc()
 

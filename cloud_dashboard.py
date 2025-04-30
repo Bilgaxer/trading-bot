@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 import time
 import os
+from db_helper import DatabaseHelper
 
 # Streamlit page config
 st.set_page_config(
@@ -52,14 +53,22 @@ st.title("Crypto Trading Bot Dashboard")
 # Create columns for key metrics
 col1, col2, col3, col4 = st.columns(4)
 
+# Initialize database connection
+@st.cache_resource
+def init_db():
+    db = DatabaseHelper()
+    db.connect()
+    return db
+
 # Function to load and parse bot data
 @st.cache_data(ttl=60)  # Cache data for 60 seconds
 def load_bot_data():
     try:
-        # In production, replace this with your secure data source
-        # Example: AWS S3, MongoDB, or other cloud storage
-        with open('bot_data.json', 'r') as f:
-            data = json.load(f)
+        db = init_db()
+        data = db.get_bot_data()
+        if not data:
+            st.error("No trading data available")
+            return None
         return data
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")

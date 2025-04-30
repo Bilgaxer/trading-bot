@@ -36,4 +36,7 @@ bot_data.json
 sentiment_log.txt
 *.log
 .env
-config.json 
+config.json
+
+# Streamlit
+.streamlit/secrets.toml 
