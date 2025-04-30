@@ -672,7 +672,7 @@ while True:
             print(f"Stop Loss: {paper_trading['position']['stop_loss']:.2f} USDT")
             print(f"Take Profit: {paper_trading['position']['take_profit']:.2f} USDT")
             print("[PAPER] Position active - waiting for exit signals")
-        else:
+    else:
             # Trading logic for opening new positions
             if (breakout and 
                 volume_spike and 
@@ -698,5 +698,5 @@ while True:
 
     except Exception as e:
         print(f"Error in main loop: {e}")
-        
+
     time.sleep(60)

@@ -144,9 +144,9 @@ def main():
             # Display each condition with status
             for condition, status in long_conditions.items():
                 if status:
-                    st.markdown(f"✅ {condition.replace('_', ' ').title()}")
+                    st.markdown(f"**YES** {condition.replace('_', ' ').title()}")
                 else:
-                    st.markdown(f"❌ {condition.replace('_', ' ').title()}")
+                    st.markdown(f"**NO** {condition.replace('_', ' ').title()}")
             
             # Show current values relevant to long conditions
             st.markdown("#### Current Values")
@@ -165,9 +165,9 @@ def main():
             # Display each condition with status
             for condition, status in short_conditions.items():
                 if status:
-                    st.markdown(f"✅ {condition.replace('_', ' ').title()}")
+                    st.markdown(f"**YES** {condition.replace('_', ' ').title()}")
                 else:
-                    st.markdown(f"❌ {condition.replace('_', ' ').title()}")
+                    st.markdown(f"**NO** {condition.replace('_', ' ').title()}")
             
             # Show current values relevant to short conditions
             st.markdown("#### Current Values")
