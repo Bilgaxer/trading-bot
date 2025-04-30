@@ -124,3 +124,48 @@ Recent Headlines:
 - Bitcoin breaks through $95K barrier, enters consolidation phase
 - Analysts Suggest Bitcoin Could Be on the Verge of Another Bull Run
 --------------------------------------------------
+
+2025-04-30 10:47:52 - Sentiment Score: -0.550
+Recent Headlines:
+- Only XRP? Expert Claims That’s All You Need To Succeed
+- Metaplanet Taps David Bailey To Join Eric Trump For Bitcoin Push
+- Bitcoin "Space Race": Reports Challenge Alleged Claims by Trump Executive
+- Green Bitcoin? Over 52% of Mining Now Uses Sustainable Energy
+- New Cboe Bitcoin Futures (XBTF) Offer More Flexibility for Crypto Traders
+--------------------------------------------------
+
+2025-04-30 10:57:55 - Sentiment Score: -0.588
+Recent Headlines:
+- Only XRP? Expert Claims That’s All You Need To Succeed
+- Metaplanet Taps David Bailey To Join Eric Trump For Bitcoin Push
+- Bitcoin "Space Race": Reports Challenge Alleged Claims by Trump Executive
+- Green Bitcoin? Over 52% of Mining Now Uses Sustainable Energy
+- New Cboe Bitcoin Futures (XBTF) Offer More Flexibility for Crypto Traders
+--------------------------------------------------
+
+2025-04-30 11:07:44 - Sentiment Score: -0.633
+Recent Headlines:
+- How confident are Bitcoin holders right now? Data suggests breach of $95K means…
+- Big Money Bets on Bitcoin: $3.2 Billion Inflows and Whale Accumulation Hint at $106,000 Breakout
+- Only XRP? Expert Claims That’s All You Need To Succeed
+- Metaplanet Taps David Bailey To Join Eric Trump For Bitcoin Push
+- Bitcoin "Space Race": Reports Challenge Alleged Claims by Trump Executive
+--------------------------------------------------
+
+2025-04-30 11:09:54 - Sentiment Score: -0.633
+Recent Headlines:
+- How confident are Bitcoin holders right now? Data suggests breach of $95K means…
+- Big Money Bets on Bitcoin: $3.2 Billion Inflows and Whale Accumulation Hint at $106,000 Breakout
+- Only XRP? Expert Claims That’s All You Need To Succeed
+- Metaplanet Taps David Bailey To Join Eric Trump For Bitcoin Push
+- Bitcoin "Space Race": Reports Challenge Alleged Claims by Trump Executive
+--------------------------------------------------
+
+2025-04-30 11:11:02 - Sentiment Score: -0.633
+Recent Headlines:
+- How confident are Bitcoin holders right now? Data suggests breach of $95K means…
+- Big Money Bets on Bitcoin: $3.2 Billion Inflows and Whale Accumulation Hint at $106,000 Breakout
+- Only XRP? Expert Claims That’s All You Need To Succeed
+- Metaplanet Taps David Bailey To Join Eric Trump For Bitcoin Push
+- Bitcoin "Space Race": Reports Challenge Alleged Claims by Trump Executive
+--------------------------------------------------

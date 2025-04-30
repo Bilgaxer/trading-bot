@@ -148,6 +148,45 @@ def save_bot_data(df, last_price, rsi_value, atr_value):
         # Convert volume spike to native Python boolean
         volume_spike = bool(check_volume_spike(df))
 
+        # Calculate trading conditions
+        recent_high = df['high'].iloc[-5:].max()
+        recent_low = df['low'].iloc[-5:].min()
+        breakout = last_price > recent_high
+        breakdown = last_price < recent_low
+        sentiment_condition_long = (not is_sentiment_valid()) or (last_sentiment_score > 0.05)
+        sentiment_condition_short = (not is_sentiment_valid()) or (last_sentiment_score < -0.05)
+        funding_condition_long = current_funding_rate < 0.005
+        funding_condition_short = current_funding_rate > -0.005
+        atr_condition = atr_value > calculate_atr_threshold(df)
+
+        # Track all conditions
+        trading_conditions = {
+            'long_conditions': {
+                'breakout': bool(breakout),
+                'volume_spike': bool(volume_spike),
+                'funding_rate': bool(funding_condition_long),
+                'atr_threshold': bool(atr_condition),
+                'sentiment': bool(sentiment_condition_long)
+            },
+            'short_conditions': {
+                'breakdown': bool(breakdown),
+                'volume_spike': bool(volume_spike),
+                'funding_rate': bool(funding_condition_short),
+                'atr_threshold': bool(atr_condition),
+                'sentiment': bool(sentiment_condition_short)
+            },
+            'current_values': {
+                'price': float(last_price),
+                'recent_high': float(recent_high),
+                'recent_low': float(recent_low),
+                'volume_spike_ratio': float(df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]),
+                'funding_rate': float(current_funding_rate),
+                'atr': float(atr_value),
+                'atr_threshold': float(calculate_atr_threshold(df)),
+                'sentiment_score': float(last_sentiment_score)
+            }
+        }
+
         data = {
             'balance': float(paper_trading['balance']),
             'initial_balance': float(paper_trading['initial_balance']),
@@ -174,6 +213,7 @@ def save_bot_data(df, last_price, rsi_value, atr_value):
                 'funding_rate': float(current_funding_rate),
                 'volume_spike': volume_spike
             },
+            'trading_conditions': trading_conditions,
             'performance_summary': {
                 'last_update': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'daily_pnl': float(sum(t['pnl'] for t in recent_trades)),
@@ -596,9 +636,33 @@ while True:
         breakout = last_price > recent_high
         breakdown = last_price < recent_low
 
+        # Calculate trading conditions
+        sentiment_condition_long = (not is_sentiment_valid()) or (last_sentiment_score > 0.05)
+        sentiment_condition_short = (not is_sentiment_valid()) or (last_sentiment_score < -0.05)
+        funding_condition_long = current_funding_rate < 0.005
+        funding_condition_short = current_funding_rate > -0.005
+        atr_condition = atr.iloc[-1] > atr_threshold
+
         print(f"\n[PAPER] Current Price: {last_price:.2f} USDT")
         print(f"[PAPER] ATR: {atr.iloc[-1]:.2f} (Threshold: {atr_threshold:.2f})")
         print(f"[PAPER] Balance: {paper_trading['balance']:.2f} USDT")
+        
+        # Display trading conditions
+        print("\n=== Trading Conditions ===")
+        print("Long Entry Conditions:")
+        print(f"  {'YES' if breakout else 'NO '} Breakout: Price > Recent High ({recent_high:.2f})")
+        print(f"  {'YES' if volume_spike else 'NO '} Volume Spike: {df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]:.2f}x")
+        print(f"  {'YES' if funding_condition_long else 'NO '} Funding Rate: {current_funding_rate:.4%} < 0.5%")
+        print(f"  {'YES' if atr_condition else 'NO '} ATR: {atr.iloc[-1]:.2f} > {atr_threshold:.2f}")
+        print(f"  {'YES' if sentiment_condition_long else 'NO '} Sentiment: {last_sentiment_score:.3f} > 0.05")
+        
+        print("\nShort Entry Conditions:")
+        print(f"  {'YES' if breakdown else 'NO '} Breakdown: Price < Recent Low ({recent_low:.2f})")
+        print(f"  {'YES' if volume_spike else 'NO '} Volume Spike: {df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]:.2f}x")
+        print(f"  {'YES' if funding_condition_short else 'NO '} Funding Rate: {current_funding_rate:.4%} > -0.5%")
+        print(f"  {'YES' if atr_condition else 'NO '} ATR: {atr.iloc[-1]:.2f} > {atr_threshold:.2f}")
+        print(f"  {'YES' if sentiment_condition_short else 'NO '} Sentiment: {last_sentiment_score:.3f} < -0.05")
+        print("=" * 30)
         
         if paper_trading['position']['side']:
             print(f"[PAPER] Active {paper_trading['position']['side']} position:")
@@ -610,26 +674,22 @@ while True:
             print("[PAPER] Position active - waiting for exit signals")
         else:
             # Trading logic for opening new positions
-            sentiment_condition = (not is_sentiment_valid()) or (last_sentiment_score > 0.05)  # Skip sentiment check if too old
-            
             if (breakout and 
                 volume_spike and 
                 current_funding_rate < 0.005 and 
                 atr.iloc[-1] > atr_threshold and 
-                sentiment_condition):  # Modified sentiment condition
+                sentiment_condition_long):  # Modified sentiment condition
                 
                 entry_price = last_price
                 stop_loss = entry_price * (1 - 0.02)  # 2% stop loss
                 take_profit = entry_price * 1.06  # 6% take profit
                 open_position('long', position_size, entry_price, stop_loss, take_profit)
 
-            sentiment_condition = (not is_sentiment_valid()) or (last_sentiment_score < -0.05)  # Skip sentiment check if too old
-            
             if (breakdown and 
                 volume_spike and 
                 current_funding_rate > -0.005 and 
                 atr.iloc[-1] > atr_threshold and 
-                sentiment_condition):  # Modified sentiment condition
+                sentiment_condition_short):  # Modified sentiment condition
                 
                 entry_price = last_price
                 stop_loss = entry_price * (1 + 0.02)  # 2% stop loss

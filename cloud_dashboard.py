@@ -61,7 +61,7 @@ def init_db():
     return db
 
 # Function to load and parse bot data
-@st.cache_data(ttl=60)  # Cache data for 60 seconds
+@st.cache_data(ttl=30)  # Cache data for 30 seconds by default
 def load_bot_data():
     try:
         db = init_db()
@@ -75,6 +75,30 @@ def load_bot_data():
         return None
 
 def main():
+    # Add refresh controls to sidebar
+    with st.sidebar:
+        st.subheader("Refresh Settings")
+        refresh_interval = st.slider(
+            "Auto-refresh interval (seconds)",
+            min_value=10,
+            max_value=300,
+            value=30,
+            step=10,
+            key="refresh_interval"
+        )
+        
+        # Manual refresh button
+        if st.button("🔄 Refresh Now"):
+            st.cache_data.clear()
+            st.rerun()
+        
+        # Auto-refresh status
+        st.write(f"Next auto-refresh in: {refresh_interval} seconds")
+        
+        # Mobile view toggle
+        st.toggle('Mobile View', key='mobile_view')
+
+    # Load and display data
     data = load_bot_data()
     
     if data:
@@ -104,6 +128,56 @@ def main():
                 "Current Price",
                 f"${data['market_data']['current_price']:.2f}",
             )
+
+        # Display trading conditions
+        st.subheader("Trading Conditions")
+        conditions = data.get('trading_conditions', {})
+        current_values = conditions.get('current_values', {})
+        
+        # Create two columns for long and short conditions
+        long_col, short_col = st.columns(2)
+        
+        with long_col:
+            st.markdown("### Long Entry Conditions")
+            long_conditions = conditions.get('long_conditions', {})
+            
+            # Display each condition with status
+            for condition, status in long_conditions.items():
+                if status:
+                    st.markdown(f"✅ {condition.replace('_', ' ').title()}")
+                else:
+                    st.markdown(f"❌ {condition.replace('_', ' ').title()}")
+            
+            # Show current values relevant to long conditions
+            st.markdown("#### Current Values")
+            st.write(f"Price: ${current_values.get('price', 0):.2f}")
+            st.write(f"Recent High: ${current_values.get('recent_high', 0):.2f}")
+            st.write(f"Volume Spike Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
+            st.write(f"Funding Rate: {current_values.get('funding_rate', 0):.4%}")
+            st.write(f"ATR: {current_values.get('atr', 0):.2f}")
+            st.write(f"ATR Threshold: {current_values.get('atr_threshold', 0):.2f}")
+            st.write(f"Sentiment Score: {current_values.get('sentiment_score', 0):.3f}")
+        
+        with short_col:
+            st.markdown("### Short Entry Conditions")
+            short_conditions = conditions.get('short_conditions', {})
+            
+            # Display each condition with status
+            for condition, status in short_conditions.items():
+                if status:
+                    st.markdown(f"✅ {condition.replace('_', ' ').title()}")
+                else:
+                    st.markdown(f"❌ {condition.replace('_', ' ').title()}")
+            
+            # Show current values relevant to short conditions
+            st.markdown("#### Current Values")
+            st.write(f"Price: ${current_values.get('price', 0):.2f}")
+            st.write(f"Recent Low: ${current_values.get('recent_low', 0):.2f}")
+            st.write(f"Volume Spike Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
+            st.write(f"Funding Rate: {current_values.get('funding_rate', 0):.4%}")
+            st.write(f"ATR: {current_values.get('atr', 0):.2f}")
+            st.write(f"ATR Threshold: {current_values.get('atr_threshold', 0):.2f}")
+            st.write(f"Sentiment Score: {current_values.get('sentiment_score', 0):.3f}")
 
         # Create price chart with mobile-friendly layout
         if 'price_history' in data:
@@ -234,9 +308,6 @@ def main():
 
         # Last update time in sidebar
         st.sidebar.write(f"Last Updated: {data['performance_summary']['last_update']}")
-
-        # Mobile view toggle in sidebar
-        st.sidebar.toggle('Mobile View', key='mobile_view')
 
 if __name__ == "__main__":
     main() 
