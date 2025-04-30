@@ -139,45 +139,54 @@ def main():
         
         with long_col:
             st.markdown("### Long Entry Conditions")
-            long_conditions = conditions.get('long_conditions', {})
             
-            # Display each condition with status
-            for condition, status in long_conditions.items():
-                if status:
-                    st.markdown(f"**YES** {condition.replace('_', ' ').title()}")
-                else:
-                    st.markdown(f"**NO** {condition.replace('_', ' ').title()}")
+            # Primary Conditions
+            st.markdown("#### Primary Conditions")
+            price_above_donchian = current_values.get('price', 0) > current_values.get('donchian_high', 0)
+            volume_spike = current_values.get('volume_spike_ratio', 0) > 1.3
             
-            # Show current values relevant to long conditions
+            st.markdown(f"**{'✅' if price_above_donchian else '❌'}** Price Above Donchian High")
+            st.markdown(f"**{'✅' if volume_spike else '❌'}** Volume > 1.3x 20MA")
+            
+            # Secondary Conditions
+            st.markdown("#### Secondary Conditions")
+            price_above_vwap = current_values.get('price', 0) > current_values.get('vwap', 0)
+            supertrend_bullish = current_values.get('supertrend', False)
+            
+            st.markdown(f"**{'✅' if price_above_vwap else '❌'}** Price Above VWAP")
+            st.markdown(f"**{'✅' if supertrend_bullish else '❌'}** SuperTrend Bullish")
+            
+            # Show current values
             st.markdown("#### Current Values")
             st.write(f"Price: ${current_values.get('price', 0):.2f}")
-            st.write(f"Recent High: ${current_values.get('recent_high', 0):.2f}")
-            st.write(f"Volume Spike Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
-            st.write(f"Funding Rate: {current_values.get('funding_rate', 0):.4%}")
-            st.write(f"ATR: {current_values.get('atr', 0):.2f}")
-            st.write(f"ATR Threshold: {current_values.get('atr_threshold', 0):.2f}")
-            st.write(f"Sentiment Score: {current_values.get('sentiment_score', 0):.3f}")
+            st.write(f"Donchian High: ${current_values.get('donchian_high', 0):.2f}")
+            st.write(f"VWAP: ${current_values.get('vwap', 0):.2f}")
+            st.write(f"Volume Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
         
         with short_col:
             st.markdown("### Short Entry Conditions")
-            short_conditions = conditions.get('short_conditions', {})
             
-            # Display each condition with status
-            for condition, status in short_conditions.items():
-                if status:
-                    st.markdown(f"**YES** {condition.replace('_', ' ').title()}")
-                else:
-                    st.markdown(f"**NO** {condition.replace('_', ' ').title()}")
+            # Primary Conditions
+            st.markdown("#### Primary Conditions")
+            price_below_donchian = current_values.get('price', 0) < current_values.get('donchian_low', 0)
             
-            # Show current values relevant to short conditions
+            st.markdown(f"**{'✅' if price_below_donchian else '❌'}** Price Below Donchian Low")
+            st.markdown(f"**{'✅' if volume_spike else '❌'}** Volume > 1.3x 20MA")
+            
+            # Secondary Conditions
+            st.markdown("#### Secondary Conditions")
+            price_below_vwap = current_values.get('price', 0) < current_values.get('vwap', 0)
+            supertrend_bearish = not current_values.get('supertrend', False)
+            
+            st.markdown(f"**{'✅' if price_below_vwap else '❌'}** Price Below VWAP")
+            st.markdown(f"**{'✅' if supertrend_bearish else '❌'}** SuperTrend Bearish")
+            
+            # Show current values
             st.markdown("#### Current Values")
             st.write(f"Price: ${current_values.get('price', 0):.2f}")
-            st.write(f"Recent Low: ${current_values.get('recent_low', 0):.2f}")
-            st.write(f"Volume Spike Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
-            st.write(f"Funding Rate: {current_values.get('funding_rate', 0):.4%}")
-            st.write(f"ATR: {current_values.get('atr', 0):.2f}")
-            st.write(f"ATR Threshold: {current_values.get('atr_threshold', 0):.2f}")
-            st.write(f"Sentiment Score: {current_values.get('sentiment_score', 0):.3f}")
+            st.write(f"Donchian Low: ${current_values.get('donchian_low', 0):.2f}")
+            st.write(f"VWAP: ${current_values.get('vwap', 0):.2f}")
+            st.write(f"Volume Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
 
         # Create price chart with mobile-friendly layout
         if 'price_history' in data:
@@ -187,12 +196,12 @@ def main():
             # Make chart more mobile-friendly
             chart_height = 600 if st.session_state.get('mobile_view', False) else 800
             
-            fig = make_subplots(rows=3, cols=1, 
+            fig = make_subplots(rows=2, cols=1,  # Changed from 3 to 2 rows
                               shared_xaxes=True,
                               vertical_spacing=0.05,
-                              row_heights=[0.5, 0.25, 0.25])
+                              row_heights=[0.7, 0.3])  # Adjusted row heights
 
-            # Price chart with trades
+            # Price chart with trades and indicators
             fig.add_trace(
                 go.Candlestick(
                     x=df['timestamp'],
@@ -201,6 +210,48 @@ def main():
                     low=df['low'],
                     close=df['close'],
                     name='Price'
+                ),
+                row=1, col=1
+            )
+
+            # Add Donchian Channels
+            fig.add_trace(
+                go.Scatter(
+                    x=df['timestamp'],
+                    y=df['donchian_high'],
+                    name='Donchian High',
+                    line=dict(color='green', width=1, dash='dash')
+                ),
+                row=1, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=df['timestamp'],
+                    y=df['donchian_low'],
+                    name='Donchian Low',
+                    line=dict(color='red', width=1, dash='dash')
+                ),
+                row=1, col=1
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=df['timestamp'],
+                    y=df['donchian_mid'],
+                    name='Donchian Mid',
+                    line=dict(color='gray', width=1)
+                ),
+                row=1, col=1
+            )
+
+            # Add VWAP
+            fig.add_trace(
+                go.Scatter(
+                    x=df['timestamp'],
+                    y=df['vwap'],
+                    name='VWAP',
+                    line=dict(color='purple', width=1)
                 ),
                 row=1, col=1
             )
@@ -223,18 +274,22 @@ def main():
                     row=1, col=1
                 )
 
-            # RSI subplot
-            fig.add_trace(
-                go.Scatter(x=df['timestamp'], y=df['rsi'], name='RSI'),
-                row=2, col=1
-            )
-            fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-            fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
-
-            # Volume subplot
+            # Volume subplot with spike threshold
             fig.add_trace(
                 go.Bar(x=df['timestamp'], y=df['volume'], name='Volume'),
-                row=3, col=1
+                row=2, col=1
+            )
+            
+            # Add volume MA
+            volume_ma = df['volume'].rolling(window=20).mean()
+            fig.add_trace(
+                go.Scatter(
+                    x=df['timestamp'],
+                    y=volume_ma * 1.3,  # Volume spike threshold (1.3x)
+                    name='Volume Threshold',
+                    line=dict(color='red', dash='dash')
+                ),
+                row=2, col=1
             )
 
             # Update layout for better mobile viewing
@@ -269,16 +324,16 @@ def main():
         tech_cols = st.columns(4)
         
         with tech_cols[0]:
-            st.metric("RSI", f"{data['market_data']['current_rsi']:.2f}")
+            st.metric("Donchian High", f"${current_values.get('donchian_high', 0):.2f}")
         
         with tech_cols[1]:
-            st.metric("ATR", f"{data['market_data']['current_atr']:.2f}")
+            st.metric("Donchian Low", f"${current_values.get('donchian_low', 0):.2f}")
         
         with tech_cols[2]:
-            st.metric("Sentiment", f"{data['market_data']['sentiment_score']:.3f}")
+            st.metric("VWAP", f"${current_values.get('vwap', 0):.2f}")
         
         with tech_cols[3]:
-            st.metric("Funding", f"{data['market_data']['funding_rate']:.4%}")
+            st.metric("Volume Ratio", f"{current_values.get('volume_spike_ratio', 0):.2f}x")
 
         # Performance metrics
         st.subheader("Performance")

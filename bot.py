@@ -23,7 +23,7 @@ db.connect()
 
 # Trading pair configuration
 symbol = 'BTC/USDT'
-timeframe = '1m'
+timeframe = '5m'  # Changed from 1m to 5m
 news_check_interval = 600  # 10 minutes
 last_news_check = 0
 last_sentiment_score = 0
@@ -101,6 +101,11 @@ SCALE_INTERVAL = 0.02  # 2% price movement for each scale
 TRAILING_STOP_INITIAL = 0.02  # 2% initial trailing stop
 TRAILING_STOP_STEP = 0.005  # 0.5% step for trailing stop
 RISK_PER_TRADE = 0.01  # 1% risk per trade
+DONCHIAN_PERIOD = 20  # Period for Donchian Channel
+VOLUME_THRESHOLD = 1.3  # Volume must be 1.3x average
+POSITION_SIZE_BOOST = 1.2  # Increase position size by 20% if secondary conditions met
+TP_PERCENTAGE = 0.007  # 0.7% take profit
+INITIAL_STOP_PERCENTAGE = 0.004  # 0.4% initial stop loss
 
 # FinBERT setup
 tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
@@ -125,142 +130,80 @@ paper_trading = {
     'loss_trades': 0
 }
 
-def save_bot_data(df, last_price, rsi_value, atr_value):
-    try:
-        # Calculate performance metrics
-        total_trades = len(paper_trading['trades'])
-        win_rate = (paper_trading['win_trades'] / total_trades * 100) if total_trades > 0 else 0
-        roi = ((paper_trading['balance'] / paper_trading['initial_balance']) - 1) * 100
+def calculate_vwap(df):
+    """Calculate VWAP (Volume Weighted Average Price)"""
+    df['vwap'] = (df['volume'] * (df['high'] + df['low'] + df['close']) / 3).cumsum() / df['volume'].cumsum()
+    return df['vwap']
 
-        # Get recent trades
-        recent_trades = []
-        for trade in paper_trading['trades'][-10:]:
-            trade_data = {
-                'side': trade['side'],
-                'entry': float(trade['entry']),
-                'exit': float(trade['exit']),
-                'pnl': float(trade['pnl']),
-                'reason': trade['reason'],
-                'timestamp': trade.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            }
-            recent_trades.append(trade_data)
+def calculate_emas(df):
+    """Calculate EMA-9 and EMA-21"""
+    df['ema9'] = ta.trend.ema_indicator(df['close'], window=9)
+    df['ema21'] = ta.trend.ema_indicator(df['close'], window=21)
+    return df['ema9'], df['ema21']
 
-        # Convert volume spike to native Python boolean
-        volume_spike = bool(check_volume_spike(df))
+def check_volume_spike(df):
+    """Check if current volume is 1.05x the 20-period average"""
+    volume_ma = df['volume'].rolling(window=20).mean()
+    return df['volume'].iloc[-1] > volume_ma.iloc[-1] * 1.05
 
-        # Calculate trading conditions
-        recent_high = df['high'].iloc[-5:].max()
-        recent_low = df['low'].iloc[-5:].min()
-        breakout = last_price > recent_high
-        breakdown = last_price < recent_low
-        sentiment_condition_long = (not is_sentiment_valid()) or (last_sentiment_score > 0.05)
-        sentiment_condition_short = (not is_sentiment_valid()) or (last_sentiment_score < -0.05)
-        funding_condition_long = current_funding_rate < 0.005
-        funding_condition_short = current_funding_rate > -0.005
-        atr_condition = atr_value > calculate_atr_threshold(df)
+def calculate_donchian_channel(df, period=DONCHIAN_PERIOD):
+    """Calculate Donchian Channel"""
+    df['donchian_high'] = df['high'].rolling(window=period).max()
+    df['donchian_low'] = df['low'].rolling(window=period).min()
+    df['donchian_mid'] = (df['donchian_high'] + df['donchian_low']) / 2
+    return df['donchian_high'], df['donchian_low'], df['donchian_mid']
 
-        # Track all conditions
-        trading_conditions = {
-            'long_conditions': {
-                'breakout': bool(breakout),
-                'volume_spike': bool(volume_spike),
-                'funding_rate': bool(funding_condition_long),
-                'atr_threshold': bool(atr_condition),
-                'sentiment': bool(sentiment_condition_long)
-            },
-            'short_conditions': {
-                'breakdown': bool(breakdown),
-                'volume_spike': bool(volume_spike),
-                'funding_rate': bool(funding_condition_short),
-                'atr_threshold': bool(atr_condition),
-                'sentiment': bool(sentiment_condition_short)
-            },
-            'current_values': {
-                'price': float(last_price),
-                'recent_high': float(recent_high),
-                'recent_low': float(recent_low),
-                'volume_spike_ratio': float(df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]),
-                'funding_rate': float(current_funding_rate),
-                'atr': float(atr_value),
-                'atr_threshold': float(calculate_atr_threshold(df)),
-                'sentiment_score': float(last_sentiment_score)
-            }
-        }
-
-        data = {
-            'balance': float(paper_trading['balance']),
-            'initial_balance': float(paper_trading['initial_balance']),
-            'total_pnl': float(paper_trading['total_pnl']),
-            'win_trades': int(paper_trading['win_trades']),
-            'total_trades': total_trades,
-            'win_rate': float(win_rate),
-            'roi': float(roi),
-            'recent_trades': recent_trades,
-            'position': {
-                'side': paper_trading['position']['side'],
-                'size': float(paper_trading['position']['size']),
-                'entry_price': float(paper_trading['position']['entry_price']),
-                'leverage': int(paper_trading['position']['leverage']),
-                'unrealized_pnl': float(paper_trading['position']['unrealized_pnl']),
-                'stop_loss': float(paper_trading['position']['stop_loss']),
-                'take_profit': float(paper_trading['position']['take_profit'])
-            },
-            'market_data': {
-                'current_price': float(last_price),
-                'current_rsi': float(rsi_value),
-                'current_atr': float(atr_value),
-                'sentiment_score': float(last_sentiment_score),
-                'funding_rate': float(current_funding_rate),
-                'volume_spike': volume_spike
-            },
-            'trading_conditions': trading_conditions,
-            'performance_summary': {
-                'last_update': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'daily_pnl': float(sum(t['pnl'] for t in recent_trades)),
-                'avg_trade_pnl': float(sum(t['pnl'] for t in paper_trading['trades']) / total_trades if total_trades > 0 else 0),
-                'best_trade': float(max((t['pnl'] for t in paper_trading['trades']), default=0)),
-                'worst_trade': float(min((t['pnl'] for t in paper_trading['trades']), default=0)),
-                'avg_win_size': float(sum(t['pnl'] for t in paper_trading['trades'] if t['pnl'] > 0) / paper_trading['win_trades'] if paper_trading['win_trades'] > 0 else 0),
-                'avg_loss_size': float(sum(t['pnl'] for t in paper_trading['trades'] if t['pnl'] < 0) / (total_trades - paper_trading['win_trades']) if (total_trades - paper_trading['win_trades']) > 0 else 0)
-            }
-        }
-
-        # Add price history
-        if not df.empty:
-            history = df.tail(100).copy()
-            history['rsi'] = calculate_rsi(df).tail(100)
-            history['atr'] = calculate_atr(df).tail(100)
-            history['timestamp'] = history['timestamp'].astype(str)
-            
-            # Convert numeric columns to native Python types
-            numeric_columns = ['open', 'high', 'low', 'close', 'volume', 'rsi', 'atr']
-            for col in numeric_columns:
-                if col in history:
-                    history[col] = history[col].astype(float)
-            
-            # Convert DataFrame to records and ensure all values are JSON serializable
-            records = history.to_dict('records')
-            for record in records:
-                for key, value in record.items():
-                    if isinstance(value, (np.integer, np.floating)):
-                        record[key] = float(value)
-                    elif isinstance(value, np.bool_):
-                        record[key] = bool(value)
-            data['price_history'] = records
-
-        # Save to MongoDB
-        db.save_bot_data(data)
+def calculate_supertrend(df, period=10, multiplier=3):
+    """Calculate SuperTrend indicator"""
+    hl2 = (df['high'] + df['low']) / 2
+    atr = ta.volatility.average_true_range(df['high'], df['low'], df['close'], window=period)
+    
+    # Calculate SuperTrend
+    upperband = hl2 + (multiplier * atr)
+    lowerband = hl2 - (multiplier * atr)
+    
+    # Initialize SuperTrend
+    supertrend = [True] * len(df)
+    final_upperband = [upperband.iloc[0]] * len(df)
+    final_lowerband = [lowerband.iloc[0]] * len(df)
+    
+    for i in range(1, len(df)):
+        curr_close = df['close'].iloc[i]
+        prev_close = df['close'].iloc[i-1]
         
-    except Exception as e:
-        print(f"Error saving bot data: {e}")
-        import traceback
-        traceback.print_exc()
+        if curr_close > final_upperband[i-1]:
+            supertrend[i] = True
+        elif curr_close < final_lowerband[i-1]:
+            supertrend[i] = False
+        else:
+            supertrend[i] = supertrend[i-1]
+            
+            if supertrend[i] and curr_close <= final_upperband[i-1]:
+                final_upperband[i] = min(upperband.iloc[i], final_upperband[i-1])
+            if not supertrend[i] and curr_close >= final_lowerband[i-1]:
+                final_lowerband[i] = max(lowerband.iloc[i], final_lowerband[i-1])
+    
+    df['supertrend'] = supertrend
+    df['supertrend_upper'] = final_upperband
+    df['supertrend_lower'] = final_lowerband
+    return df['supertrend']
 
 def fetch_price_data():
-    ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=100)
-    df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    return df
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=100)
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        
+        # Calculate indicators
+        df['vwap'] = calculate_vwap(df)
+        df['donchian_high'], df['donchian_low'], df['donchian_mid'] = calculate_donchian_channel(df)
+        df['supertrend'] = calculate_supertrend(df)
+        df['atr'] = calculate_atr(df)
+        
+        return df
+    except Exception as e:
+        print(f"Error fetching price data: {e}")
+        return None
 
 def calculate_rsi(df, periods=14):
     # Calculate RSI
@@ -288,9 +231,193 @@ def calculate_atr_threshold(df):
     median_atr = atr.median()
     return median_atr * 1.05  # Lowered from 1.1 to 1.05 (5% above median)
 
-def check_volume_spike(df):
-    avg_vol = df['volume'].rolling(window=20).mean()
-    return df['volume'].iloc[-1] > 1.05 * avg_vol.iloc[-1]  # Lowered from 1.1 to 1.05
+def check_primary_conditions(df):
+    """Check primary trading conditions"""
+    current_price = df['close'].iloc[-1]
+    prev_price = df['close'].iloc[-2]
+    
+    # Check Donchian Channel breakout
+    donchian_breakout_up = prev_price <= df['donchian_high'].iloc[-2] and current_price > df['donchian_high'].iloc[-1]
+    donchian_breakout_down = prev_price >= df['donchian_low'].iloc[-2] and current_price < df['donchian_low'].iloc[-1]
+    
+    # Check volume condition
+    volume_ma = df['volume'].rolling(window=20).mean()
+    volume_spike = df['volume'].iloc[-1] > volume_ma.iloc[-1] * VOLUME_THRESHOLD
+    
+    return {
+        'long': donchian_breakout_up and volume_spike,
+        'short': donchian_breakout_down and volume_spike,
+        'volume_spike': volume_spike
+    }
+
+def check_secondary_conditions(df):
+    """Check secondary confirmation conditions"""
+    current_price = df['close'].iloc[-1]
+    
+    # VWAP condition
+    above_vwap = current_price > df['vwap'].iloc[-1]
+    
+    # SuperTrend condition
+    supertrend_bullish = df['supertrend'].iloc[-1]
+    
+    return {
+        'long': above_vwap or supertrend_bullish,
+        'short': (not above_vwap) or (not supertrend_bullish)
+    }
+
+def save_bot_data(df, last_price, rsi_value, atr_value):
+    try:
+        # Calculate performance metrics
+        total_trades = len(paper_trading['trades'])
+        win_rate = (paper_trading['win_trades'] / total_trades * 100) if total_trades > 0 else 0
+        roi = ((paper_trading['balance'] / paper_trading['initial_balance']) - 1) * 100
+
+        # Get recent trades (ensure they're serializable)
+        recent_trades = []
+        for trade in paper_trading['trades'][-10:]:
+            recent_trades.append({
+                'side': str(trade['side']),
+                'entry': float(trade['entry']),
+                'exit': float(trade['exit']),
+                'pnl': float(trade['pnl']),
+                'reason': str(trade['reason']),
+                'timestamp': str(trade['timestamp'])
+            })
+
+        # Get trading conditions (convert numpy bools to Python bools)
+        long_conditions = check_primary_conditions(df)
+        short_conditions = check_primary_conditions(df)
+        
+        # Convert numpy bools to Python bools
+        long_conditions = {k: bool(v) for k, v in long_conditions.items()}
+        short_conditions = {k: bool(v) for k, v in short_conditions.items()}
+
+        # Current values for display (ensure all values are native Python types)
+        current_values = {
+            'price': float(last_price),
+            'vwap': float(df['vwap'].iloc[-1]),
+            'donchian_high': float(df['donchian_high'].iloc[-1]),
+            'donchian_low': float(df['donchian_low'].iloc[-1]),
+            'donchian_mid': float(df['donchian_mid'].iloc[-1]),
+            'volume_spike_ratio': float(df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]),
+            'atr': float(atr_value),
+            'atr_threshold': float(df['atr'].rolling(window=20).median().iloc[-1]),
+            'supertrend': bool(df['supertrend'].iloc[-1])
+        }
+
+        # Position data (ensure all values are native Python types)
+        position_data = {
+            'side': str(paper_trading['position']['side']) if paper_trading['position']['side'] else None,
+            'size': float(paper_trading['position']['size']),
+            'entry_price': float(paper_trading['position']['entry_price']),
+            'leverage': int(paper_trading['position']['leverage']),
+            'unrealized_pnl': float(paper_trading['position']['unrealized_pnl']),
+            'stop_loss': float(paper_trading['position']['stop_loss']),
+            'take_profit': float(paper_trading['position']['take_profit'])
+        }
+
+        data = {
+            'balance': float(paper_trading['balance']),
+            'initial_balance': float(paper_trading['initial_balance']),
+            'total_pnl': float(paper_trading['total_pnl']),
+            'win_trades': int(paper_trading['win_trades']),
+            'total_trades': int(total_trades),
+            'win_rate': float(win_rate),
+            'roi': float(roi),
+            'recent_trades': recent_trades,
+            'position': position_data,
+            'trading_conditions': {
+                'long_conditions': long_conditions,
+                'short_conditions': short_conditions,
+                'current_values': current_values
+            },
+            'market_data': {
+                'current_price': float(last_price),
+                'current_rsi': float(rsi_value),
+                'current_atr': float(atr_value),
+                'funding_rate': float(current_funding_rate)  # Add funding rate
+            },
+            'performance_summary': {
+                'last_update': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'daily_pnl': float(calculate_daily_pnl()),
+                'avg_trade_pnl': float(calculate_avg_trade_pnl()),
+                'best_trade': float(get_best_trade()),
+                'worst_trade': float(get_worst_trade())
+            }
+        }
+
+        # Save to database
+        db.save_bot_data(data)
+        
+    except Exception as e:
+        print(f"Error saving bot data: {e}")
+        import traceback
+        traceback.print_exc()  # Print full error traceback for debugging
+
+def open_position(side, size, price, stop_loss=None, take_profit=None):
+    """Open a new position with updated risk management"""
+    if paper_trading['position']['side'] is not None:
+        return False
+    
+    # Calculate position size based on risk
+    position_size = calculate_position_size(price)
+    
+    # Check secondary conditions for position size boost
+    df = fetch_price_data()
+    secondary_conditions = check_secondary_conditions(df)
+    if secondary_conditions[side]:
+        position_size *= POSITION_SIZE_BOOST
+    
+    # Set stop loss and take profit
+    if stop_loss is None:
+        stop_loss = price * (1 - INITIAL_STOP_PERCENTAGE if side == 'long' else 1 + INITIAL_STOP_PERCENTAGE)
+    
+    if take_profit is None:
+        take_profit = price * (1 + TP_PERCENTAGE if side == 'long' else 1 - TP_PERCENTAGE)
+    
+    paper_trading['position'] = {
+        'side': side,
+        'size': position_size,
+        'entry_price': price,
+        'leverage': 10,
+        'unrealized_pnl': 0.0,
+        'stop_loss': stop_loss,
+        'take_profit': take_profit,
+        'trailing_activated': False
+    }
+    
+    return True
+
+def update_trailing_stop(current_price):
+    """Update trailing stop based on SuperTrend"""
+    position = paper_trading['position']
+    if position['side'] is None:
+        return
+    
+    df = fetch_price_data()
+    supertrend = df['supertrend'].iloc[-1]
+    
+    # Update stop loss based on SuperTrend flip
+    if position['side'] == 'long' and not supertrend:
+        close_position(current_price, 'SuperTrend turned bearish')
+    elif position['side'] == 'short' and supertrend:
+        close_position(current_price, 'SuperTrend turned bullish')
+    
+    # Normal trailing stop logic
+    profit_pct = ((current_price / position['entry_price'] - 1) * 100 * 
+                  (1 if position['side'] == 'long' else -1))
+    
+    if profit_pct >= 0.3:  # Start trailing at 0.3%
+        position['trailing_activated'] = True
+        
+        if position['side'] == 'long':
+            new_stop = current_price * 0.997  # 0.3% below current price
+            if new_stop > position['stop_loss']:
+                position['stop_loss'] = new_stop
+        else:
+            new_stop = current_price * 1.003  # 0.3% above current price
+            if new_stop < position['stop_loss']:
+                position['stop_loss'] = new_stop
 
 # Global variables for funding rate checks
 last_funding_check = 0
@@ -390,20 +517,6 @@ def update_position_pnl(current_price):
         elif current_price <= paper_trading['position']['take_profit']:
             close_position(current_price, 'Take profit hit')
 
-def open_position(side, size, price, stop_loss, take_profit):
-    paper_trading['position'] = {
-        'side': side,
-        'size': size,
-        'entry_price': price,
-        'leverage': 10,
-        'unrealized_pnl': 0.0,
-        'stop_loss': stop_loss,
-        'take_profit': take_profit,
-        'open_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    print(f"[PAPER] Opened {side} position: Size={size:.6f} BTC at {price:.2f} USDT")
-    print(f"[PAPER] Stop Loss: {stop_loss:.2f}, Take Profit: {take_profit:.2f}")
-
 def close_position(price, reason=''):
     if paper_trading['position']['side'] is None:
         return
@@ -446,56 +559,6 @@ def calculate_position_size(current_price):
     risk_amount = paper_trading['balance'] * 0.01
     position_size = (risk_amount * 10) / current_price  # 10x leverage
     return position_size
-
-def update_trailing_stop(current_price):
-    if not active_position['side'] or not active_position['trailing_stop']:
-        return
-
-    if active_position['side'] == 'long':
-        new_stop = current_price * (1 - TRAILING_STOP_INITIAL)
-        if new_stop > active_position['trailing_stop']:
-            active_position['trailing_stop'] = new_stop
-            # try:
-            #     # Update stop loss order
-            #     open_orders = exchange.fetch_open_orders(symbol)
-            #     for order in open_orders:
-            #         if order['type'] == 'stop':
-            #             exchange.cancel_order(order['id'], symbol)
-                
-            #     exchange.create_order(
-            #         symbol,
-            #         'stop',
-            #         'sell',
-            #         active_position['position_size'],
-            #         new_stop,
-            #         {'stopPrice': new_stop}
-            #     )
-            print(f"Trailing stop updated to: {new_stop:.2f}")
-            # except Exception as e:
-            #     print(f"Error updating trailing stop: {e}")
-
-    elif active_position['side'] == 'short':
-        new_stop = current_price * (1 + TRAILING_STOP_INITIAL)
-        if new_stop < active_position['trailing_stop']:
-            active_position['trailing_stop'] = new_stop
-            # try:
-            #     # Update stop loss order
-            #     open_orders = exchange.fetch_open_orders(symbol)
-            #     for order in open_orders:
-            #         if order['type'] == 'stop':
-            #             exchange.cancel_order(order['id'], symbol)
-                
-            #     exchange.create_order(
-            #         symbol,
-            #         'stop',
-            #         'buy',
-            #         active_position['position_size'],
-            #         new_stop,
-            #         {'stopPrice': new_stop}
-            #     )
-            print(f"Trailing stop updated to: {new_stop:.2f}")
-            # except Exception as e:
-            #     print(f"Error updating trailing stop: {e}")
 
 def calculate_scale_size(current_price):
     try:
@@ -596,6 +659,43 @@ def log_sentiment(sentiment_score, news_list):
     except Exception as e:
         print(f"Error logging sentiment: {e}")
 
+def calculate_daily_pnl():
+    try:
+        today_trades = [t for t in paper_trading['trades'] 
+                       if datetime.strptime(t['timestamp'], "%Y-%m-%d %H:%M:%S").date() == datetime.now().date()]
+        return sum(t['pnl'] for t in today_trades)
+    except Exception as e:
+        print(f"Error calculating daily PnL: {e}")
+        return 0.0
+
+def calculate_avg_trade_pnl():
+    try:
+        total_trades = len(paper_trading['trades'])
+        if total_trades == 0:
+            return 0.0
+        return sum(t['pnl'] for t in paper_trading['trades']) / total_trades
+    except Exception as e:
+        print(f"Error calculating average trade PnL: {e}")
+        return 0.0
+
+def get_best_trade():
+    try:
+        if not paper_trading['trades']:
+            return 0.0
+        return max(t['pnl'] for t in paper_trading['trades'])
+    except Exception as e:
+        print(f"Error getting best trade: {e}")
+        return 0.0
+
+def get_worst_trade():
+    try:
+        if not paper_trading['trades']:
+            return 0.0
+        return min(t['pnl'] for t in paper_trading['trades'])
+    except Exception as e:
+        print(f"Error getting worst trade: {e}")
+        return 0.0
+
 while True:
     try:
         current_time = time.time()
@@ -647,53 +747,62 @@ while True:
         print(f"[PAPER] ATR: {atr.iloc[-1]:.2f} (Threshold: {atr_threshold:.2f})")
         print(f"[PAPER] Balance: {paper_trading['balance']:.2f} USDT")
         
+        # Get trading conditions
+        long_conditions = check_primary_conditions(df)
+        short_conditions = check_primary_conditions(df)
+        
+        # Get current price once for all conditions
+        current_price = df['close'].iloc[-1]
+        
         # Display trading conditions
         print("\n=== Trading Conditions ===")
         print("Long Entry Conditions:")
-        print(f"  {'YES' if breakout else 'NO '} Breakout: Price > Recent High ({recent_high:.2f})")
-        print(f"  {'YES' if volume_spike else 'NO '} Volume Spike: {df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]:.2f}x")
-        print(f"  {'YES' if funding_condition_long else 'NO '} Funding Rate: {current_funding_rate:.4%} < 0.5%")
-        print(f"  {'YES' if atr_condition else 'NO '} ATR: {atr.iloc[-1]:.2f} > {atr_threshold:.2f}")
-        print(f"  {'YES' if sentiment_condition_long else 'NO '} Sentiment: {last_sentiment_score:.3f} > 0.05")
+        print("Primary Conditions:")
+        print(f"  {'YES' if long_conditions['long'] else 'NO '} Price crosses above Donchian High")
+        print(f"  {'YES' if long_conditions['volume_spike'] else 'NO '} Volume > 1.3× 20MA")
+        
+        # Get secondary conditions
+        secondary = check_secondary_conditions(df)
+        print("\nSecondary Conditions:")
+        print(f"  {'YES' if current_price > df['vwap'].iloc[-1] else 'NO '} Price Above VWAP")
+        print(f"  {'YES' if df['supertrend'].iloc[-1] else 'NO '} SuperTrend Bullish")
         
         print("\nShort Entry Conditions:")
-        print(f"  {'YES' if breakdown else 'NO '} Breakdown: Price < Recent Low ({recent_low:.2f})")
-        print(f"  {'YES' if volume_spike else 'NO '} Volume Spike: {df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]:.2f}x")
-        print(f"  {'YES' if funding_condition_short else 'NO '} Funding Rate: {current_funding_rate:.4%} > -0.5%")
-        print(f"  {'YES' if atr_condition else 'NO '} ATR: {atr.iloc[-1]:.2f} > {atr_threshold:.2f}")
-        print(f"  {'YES' if sentiment_condition_short else 'NO '} Sentiment: {last_sentiment_score:.3f} < -0.05")
+        print("Primary Conditions:")
+        print(f"  {'YES' if short_conditions['short'] else 'NO '} Price crosses below Donchian Low")
+        print(f"  {'YES' if short_conditions['volume_spike'] else 'NO '} Volume > 1.3× 20MA")
+        
+        print("\nSecondary Conditions:")
+        print(f"  {'YES' if current_price < df['vwap'].iloc[-1] else 'NO '} Price Below VWAP")
+        print(f"  {'YES' if not df['supertrend'].iloc[-1] else 'NO '} SuperTrend Bearish")
         print("=" * 30)
         
         if paper_trading['position']['side']:
-            print(f"[PAPER] Active {paper_trading['position']['side']} position:")
+            print(f"\n[PAPER] Active {paper_trading['position']['side']} position:")
             print(f"Size: {paper_trading['position']['size']:.6f} BTC")
             print(f"Entry: {paper_trading['position']['entry_price']:.2f} USDT")
             print(f"Current PnL: {paper_trading['position']['unrealized_pnl']:.2f} USDT")
             print(f"Stop Loss: {paper_trading['position']['stop_loss']:.2f} USDT")
             print(f"Take Profit: {paper_trading['position']['take_profit']:.2f} USDT")
             print("[PAPER] Position active - waiting for exit signals")
-    else:
+        else:
             # Trading logic for opening new positions
-            if (breakout and 
-                volume_spike and 
-                current_funding_rate < 0.005 and 
-                atr.iloc[-1] > atr_threshold and 
-                sentiment_condition_long):  # Modified sentiment condition
+            if (long_conditions['long'] and 
+                long_conditions['volume_spike']):
                 
                 entry_price = last_price
-                stop_loss = entry_price * (1 - 0.02)  # 2% stop loss
-                take_profit = entry_price * 1.06  # 6% take profit
+                # 0.4% initial stop loss, 0.7% take profit
+                stop_loss = entry_price * 0.996
+                take_profit = entry_price * 1.007
                 open_position('long', position_size, entry_price, stop_loss, take_profit)
 
-            if (breakdown and 
-                volume_spike and 
-                current_funding_rate > -0.005 and 
-                atr.iloc[-1] > atr_threshold and 
-                sentiment_condition_short):  # Modified sentiment condition
+            if (short_conditions['short'] and 
+                short_conditions['volume_spike']):
                 
                 entry_price = last_price
-                stop_loss = entry_price * (1 + 0.02)  # 2% stop loss
-                take_profit = entry_price * 0.94  # 6% take profit
+                # 0.4% initial stop loss, 0.7% take profit
+                stop_loss = entry_price * 1.004
+                take_profit = entry_price * 0.993
                 open_position('short', position_size, entry_price, stop_loss, take_profit)
 
     except Exception as e:
