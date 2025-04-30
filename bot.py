@@ -316,6 +316,23 @@ def save_bot_data(df, last_price, atr_value):
             'take_profit': float(paper_trading['position']['take_profit'])
         }
 
+        # Convert DataFrame to list of dictionaries for price history
+        price_history = []
+        for idx, row in df.iterrows():
+            price_history.append({
+                'timestamp': str(row['timestamp']),
+                'open': float(row['open']),
+                'high': float(row['high']),
+                'low': float(row['low']),
+                'close': float(row['close']),
+                'volume': float(row['volume']),
+                'vwap': float(row['vwap']),
+                'donchian_high': float(row['donchian_high']),
+                'donchian_low': float(row['donchian_low']),
+                'donchian_mid': float(row['donchian_mid']),
+                'supertrend': bool(row['supertrend'])
+            })
+
         data = {
             'balance': float(paper_trading['balance']),
             'initial_balance': float(paper_trading['initial_balance']),
@@ -342,7 +359,8 @@ def save_bot_data(df, last_price, atr_value):
                 'avg_trade_pnl': float(calculate_avg_trade_pnl()),
                 'best_trade': float(get_best_trade()),
                 'worst_trade': float(get_worst_trade())
-            }
+            },
+            'price_history': price_history  # Add price history to the data
         }
 
         # Save to database

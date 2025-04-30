@@ -5,48 +5,59 @@ import os
 
 class DatabaseHelper:
     def __init__(self):
-        # Get MongoDB connection string from environment variable
-        self.mongo_uri = os.getenv('MONGO_URI', 'mongodb+srv://<username>:<password>@<cluster-url>/trading_bot?retryWrites=true&w=majority')
-        self.client = None
-        self.db = None
-        
-    def connect(self):
-        """Establish connection to MongoDB"""
+        """Initialize MongoDB connection"""
         try:
-            self.client = MongoClient(self.mongo_uri)
-            self.db = self.client.trading_bot
-            print("Successfully connected to MongoDB!")
-            return True
+            self.client = MongoClient('mongodb://localhost:27017/')
+            self.db = self.client.crypto_bot
+            print("Successfully connected to MongoDB")
         except Exception as e:
             print(f"Error connecting to MongoDB: {e}")
-            return False
-            
+            self.client = None
+            self.db = None
+
+    def connect(self):
+        """Ensure connection is established"""
+        if not self.client or not self.db:
+            try:
+                self.client = MongoClient('mongodb://localhost:27017/')
+                self.db = self.client.crypto_bot
+                print("Successfully connected to MongoDB")
+            except Exception as e:
+                print(f"Error connecting to MongoDB: {e}")
+                return False
+        return True
+
     def save_bot_data(self, data):
         """Save bot data to MongoDB"""
         try:
-            # Add timestamp
-            data['timestamp'] = datetime.now()
+            # Convert NumPy types to Python native types
+            data = json.loads(json.dumps(data))
             
-            # Save main bot data
+            # Update main bot data
             self.db.bot_data.update_one(
                 {'_id': 'current_state'},
                 {'$set': data},
                 upsert=True
             )
             
-            # Save trade history if there are new trades
+            # Save recent trades separately
             if 'recent_trades' in data:
                 for trade in data['recent_trades']:
                     self.db.trade_history.update_one(
-                        {
-                            'timestamp': trade['timestamp'],
-                            'entry': trade['entry'],
-                            'side': trade['side']
-                        },
+                        {'timestamp': trade['timestamp']},
                         {'$set': trade},
                         upsert=True
                     )
             
+            # Save price history separately with timestamp index
+            if 'price_history' in data:
+                for price_data in data['price_history']:
+                    self.db.price_history.update_one(
+                        {'timestamp': price_data['timestamp']},
+                        {'$set': price_data},
+                        upsert=True
+                    )
+                    
             return True
         except Exception as e:
             print(f"Error saving data to MongoDB: {e}")
@@ -72,7 +83,21 @@ class DatabaseHelper:
                 for trade in recent_trades:
                     trade.pop('_id', None)
                 
+                # Get price history
+                price_history = list(self.db.price_history
+                    .find({})
+                    .sort('timestamp', -1)
+                    .limit(100))
+                    
+                # Clean up price history data
+                for price_data in price_history:
+                    price_data.pop('_id', None)
+                
+                # Sort price history by timestamp
+                price_history.sort(key=lambda x: x['timestamp'])
+                
                 data['recent_trades'] = recent_trades
+                data['price_history'] = price_history
                 return data
             return None
         except Exception as e:
