@@ -811,3 +811,12 @@ Recent Headlines:
 - How Ethereum ETFs are Different From Bitcoin ETFs?
 - Bitcoin Volatility Hits 563-Day Low as Hayes and Wood Predict $1M+ BTC
 --------------------------------------------------
+
+2025-04-30 22:18:05 - Sentiment Score: -0.480
+Recent Headlines:
+- Bitcoin Dips Slightly as US Economy Shrinks
+- Brazil’s largest crypto exchange Mercado Bitcoin taps Wormhole to bring tokenized products cross-chain
+- Federal Reserve’s potential dovish pivot following mixed US economic reports a boon for bitcoin, analysts say
+- Changpeng ‘CZ’ Zhao Is Advising Countries on How to Start Crypto Strategic Reserves
+- How Ethereum ETFs are Different From Bitcoin ETFs?
+--------------------------------------------------

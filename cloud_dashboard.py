@@ -188,6 +188,25 @@ def main():
             st.write(f"VWAP: ${current_values.get('vwap', 0):.2f}")
             st.write(f"Volume Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
 
+        # Display technical indicators
+        st.subheader("Market Data")
+        tech_cols = st.columns(5)
+        
+        with tech_cols[0]:
+            st.metric("Donchian High", f"${current_values.get('donchian_high', 0):.2f}")
+        
+        with tech_cols[1]:
+            st.metric("Donchian Low", f"${current_values.get('donchian_low', 0):.2f}")
+        
+        with tech_cols[2]:
+            st.metric("VWAP", f"${current_values.get('vwap', 0):.2f}")
+        
+        with tech_cols[3]:
+            st.metric("Volume Ratio", f"{current_values.get('volume_spike_ratio', 0):.2f}x")
+            
+        with tech_cols[4]:
+            st.metric("ATR", f"${data['market_data'].get('current_atr', 0):.2f}")
+
         # Create price chart with mobile-friendly layout
         if 'price_history' in data:
             df = pd.DataFrame(data['price_history'])
@@ -196,10 +215,10 @@ def main():
             # Make chart more mobile-friendly
             chart_height = 600 if st.session_state.get('mobile_view', False) else 800
             
-            fig = make_subplots(rows=2, cols=1,  # Changed from 3 to 2 rows
+            fig = make_subplots(rows=2, cols=1,
                               shared_xaxes=True,
                               vertical_spacing=0.05,
-                              row_heights=[0.7, 0.3])  # Adjusted row heights
+                              row_heights=[0.7, 0.3])
 
             # Price chart with trades and indicators
             fig.add_trace(
@@ -318,22 +337,6 @@ def main():
             with position_cols[2]:
                 st.write(f"Stop: ${data['position']['stop_loss']:.2f}")
                 st.write(f"Target: ${data['position']['take_profit']:.2f}")
-
-        # Display technical indicators
-        st.subheader("Market Data")
-        tech_cols = st.columns(4)
-        
-        with tech_cols[0]:
-            st.metric("Donchian High", f"${current_values.get('donchian_high', 0):.2f}")
-        
-        with tech_cols[1]:
-            st.metric("Donchian Low", f"${current_values.get('donchian_low', 0):.2f}")
-        
-        with tech_cols[2]:
-            st.metric("VWAP", f"${current_values.get('vwap', 0):.2f}")
-        
-        with tech_cols[3]:
-            st.metric("Volume Ratio", f"{current_values.get('volume_spike_ratio', 0):.2f}x")
 
         # Performance metrics
         st.subheader("Performance")

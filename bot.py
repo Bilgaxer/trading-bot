@@ -265,7 +265,7 @@ def check_secondary_conditions(df):
         'short': (not above_vwap) or (not supertrend_bullish)
     }
 
-def save_bot_data(df, last_price, rsi_value, atr_value):
+def save_bot_data(df, last_price, atr_value):
     try:
         # Calculate performance metrics
         total_trades = len(paper_trading['trades'])
@@ -333,9 +333,8 @@ def save_bot_data(df, last_price, rsi_value, atr_value):
             },
             'market_data': {
                 'current_price': float(last_price),
-                'current_rsi': float(rsi_value),
                 'current_atr': float(atr_value),
-                'funding_rate': float(current_funding_rate)  # Add funding rate
+                'funding_rate': float(current_funding_rate)
             },
             'performance_summary': {
                 'last_update': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -700,7 +699,6 @@ while True:
     try:
         current_time = time.time()
         df = fetch_price_data()
-        rsi = calculate_rsi(df)
         atr = calculate_atr(df)
         atr_threshold = calculate_atr_threshold(df)
         volume_spike = check_volume_spike(df)
@@ -711,7 +709,7 @@ while True:
         update_position_pnl(last_price)
         
         # Save data for dashboard
-        save_bot_data(df, last_price, rsi.iloc[-1], atr.iloc[-1])
+        save_bot_data(df, last_price, atr.iloc[-1])
         
         # Check news and sentiment every 10 minutes
         if current_time - last_news_check > news_check_interval:
