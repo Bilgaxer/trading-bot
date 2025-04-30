@@ -5,27 +5,26 @@ import os
 
 class DatabaseHelper:
     def __init__(self):
-        """Initialize MongoDB connection"""
-        try:
-            self.client = MongoClient('mongodb://localhost:27017/')
-            self.db = self.client.crypto_bot
-            print("Successfully connected to MongoDB")
-        except Exception as e:
-            print(f"Error connecting to MongoDB: {e}")
-            self.client = None
-            self.db = None
+        # Get MongoDB connection string from environment variable
+        self.mongo_uri = os.getenv('MONGO_URI')
+        print(f"MongoDB URI found: {'Yes' if self.mongo_uri else 'No'}")  # Debug log
+        self.client = None
+        self.db = None
 
     def connect(self):
-        """Ensure connection is established"""
-        if not self.client or not self.db:
-            try:
-                self.client = MongoClient('mongodb://localhost:27017/')
-                self.db = self.client.crypto_bot
-                print("Successfully connected to MongoDB")
-            except Exception as e:
-                print(f"Error connecting to MongoDB: {e}")
-                return False
-        return True
+        """Establish connection to MongoDB"""
+        try:
+            print("Attempting to connect to MongoDB...")  # Debug log
+            self.client = MongoClient(self.mongo_uri, serverSelectionTimeoutMS=5000)
+            self.db = self.client.trading_bot
+            # Test the connection
+            self.client.server_info()
+            print("Successfully connected to MongoDB!")
+            return True
+        except Exception as e:
+            print(f"Error connecting to MongoDB: {str(e)}")  # More detailed error
+            print(f"Connection string used: {self.mongo_uri[:20]}...")  # Show start of URI
+            return False
 
     def save_bot_data(self, data):
         """Save bot data to MongoDB"""

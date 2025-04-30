@@ -838,3 +838,21 @@ Recent Headlines:
 - Bitcoin To Hit $150,000 By October, Says DYDX's Charles d'Haussy
 - Bitcoin Dips Slightly as US Economy Shrinks
 --------------------------------------------------
+
+2025-04-30 22:38:43 - Sentiment Score: -0.581
+Recent Headlines:
+- Bitcoin drops under $93K after US GDP data shows shrinking economy, raising recession alarms
+- Bitcoin Raging Bull Indicator Turns Back On, But This Level Holds The Key
+- Coinbase ups Bitcoin-backed USDC loan limit to $1 million after seeing $130 million in originations this year
+- Bitcoin To Hit $150,000 By October, Says DYDX's Charles d'Haussy
+- Bitcoin Dips Slightly as US Economy Shrinks
+--------------------------------------------------
+
+2025-04-30 22:42:47 - Sentiment Score: -0.581
+Recent Headlines:
+- Bitcoin drops under $93K after US GDP data shows shrinking economy, raising recession alarms
+- Bitcoin Raging Bull Indicator Turns Back On, But This Level Holds The Key
+- Coinbase ups Bitcoin-backed USDC loan limit to $1 million after seeing $130 million in originations this year
+- Bitcoin To Hit $150,000 By October, Says DYDX's Charles d'Haussy
+- Bitcoin Dips Slightly as US Economy Shrinks
+--------------------------------------------------
