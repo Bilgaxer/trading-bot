@@ -316,8 +316,21 @@ def save_bot_data(df, last_price, atr_value):
                 'timestamp': str(trade['timestamp'])
             })
 
-        # Get trading conditions
+        # Get trading conditions and convert numpy bool values to Python bool values
         conditions = check_primary_conditions(df)
+        conditions_serializable = {
+            'long': bool(conditions['long']),
+            'short': bool(conditions['short']),
+            'volume_spike': bool(conditions['volume_spike']),
+            'volume_ratio': float(conditions['volume_ratio']),
+            'position_size': float(conditions['position_size']),
+            'vwap': float(conditions['vwap']),
+            'atr': float(conditions['atr']),
+            'secondary': {
+                'long': bool(conditions['secondary']['long']),
+                'short': bool(conditions['secondary']['short'])
+            }
+        }
         
         # Current values for display
         current_values = {
@@ -366,8 +379,8 @@ def save_bot_data(df, last_price, atr_value):
             'recent_trades': recent_trades,
             'position': position_data,
             'trading_conditions': {
-                'long_conditions': conditions,
-                'short_conditions': conditions,
+                'long_conditions': conditions_serializable,
+                'short_conditions': conditions_serializable,
                 'current_values': current_values
             },
             'market_data': {
