@@ -78,14 +78,31 @@ def main():
     # Add refresh controls to sidebar
     with st.sidebar:
         st.subheader("Refresh Settings")
-        refresh_interval = st.slider(
-            "Auto-refresh interval (seconds)",
-            min_value=10,
-            max_value=300,
-            value=30,
-            step=10,
-            key="refresh_interval"
-        )
+        
+        # Load current data to check position status
+        data = load_bot_data()
+        has_active_position = data and data['position']['side'] is not None
+        
+        if has_active_position:
+            refresh_interval = st.slider(
+                "Auto-refresh interval (seconds)",
+                min_value=10,
+                max_value=60,
+                value=30,
+                step=10,
+                key="refresh_interval",
+                help="Active position detected - updating every minute"
+            )
+        else:
+            refresh_interval = st.slider(
+                "Auto-refresh interval (seconds)",
+                min_value=60,
+                max_value=300,
+                value=300,
+                step=60,
+                key="refresh_interval",
+                help="No active position - updating every 5 minutes"
+            )
         
         # Manual refresh button
         if st.button("🔄 Refresh Now"):
@@ -94,6 +111,8 @@ def main():
         
         # Auto-refresh status
         st.write(f"Next auto-refresh in: {refresh_interval} seconds")
+        if has_active_position:
+            st.info("Active position detected - faster updates enabled")
         
         # Mobile view toggle
         st.toggle('Mobile View', key='mobile_view')

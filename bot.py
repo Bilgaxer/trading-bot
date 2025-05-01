@@ -96,7 +96,7 @@ active_position = {
 }
 
 # Trading parameters
-VOLUME_THRESHOLD = 1.3  # Volume must be 1.3x average
+VOLUME_THRESHOLD = 1.3  # Initial entry threshold (0.5% position)
 ATR_MULTIPLIER = 0.3  # 0.3 × ATR for VWAP offset
 POSITION_SIZE_1 = 0.005  # 0.5% of capital for initial position
 POSITION_SIZE_2 = 0.01   # 1% of capital for second addition
@@ -104,11 +104,12 @@ POSITION_SIZE_3 = 0.05   # 5% of capital max position size
 MAX_POSITION_SIZE = 0.05  # 5% of total capital cap per trade
 TP_PERCENTAGE = 0.007  # 0.7% take profit
 INITIAL_STOP_PERCENTAGE = 0.004  # 0.4% initial stop loss
+POSITION_SIZE_BOOST = 1.5  # 50% boost when secondary conditions are met
 
 # Volume-based position sizing thresholds
-VOLUME_THRESHOLD_1 = 1.3  # Initial position threshold
-VOLUME_THRESHOLD_2 = 1.7  # Add to position threshold
-VOLUME_THRESHOLD_3 = 2.0  # Max position threshold
+VOLUME_THRESHOLD_1 = 1.3  # Initial position threshold (0.5% capital)
+VOLUME_THRESHOLD_2 = 1.7  # Add to position threshold (1% capital)
+VOLUME_THRESHOLD_3 = 2.0  # Max position threshold (5% capital)
 
 # FinBERT setup
 tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
@@ -406,19 +407,27 @@ def save_bot_data(df, last_price, atr_value):
         import traceback
         traceback.print_exc()  # Print full error traceback for debugging
 
+def calculate_position_size(current_price, volume_ratio):
+    """Calculate position size based on volume ratio:
+    - 1.3x volume = 0.5% capital (initial position)
+    - 1.7x volume = 1% capital (add to position)
+    - 2.0x volume = 5% capital (max position size)
+    """
+    if volume_ratio >= 2.0:
+        return (paper_trading['balance'] * 0.05) / current_price  # 5% max position
+    elif volume_ratio >= 1.7:
+        return (paper_trading['balance'] * 0.01) / current_price  # 1% position
+    elif volume_ratio >= 1.3:
+        return (paper_trading['balance'] * 0.005) / current_price  # 0.5% initial position
+    return 0
+
 def open_position(side, size, price, stop_loss=None, take_profit=None):
     """Open a new position with updated risk management"""
     if paper_trading['position']['side'] is not None:
         return False
     
-    # Calculate position size based on risk
-    position_size = calculate_position_size(price, size)
-    
-    # Check secondary conditions for position size boost
-    df = fetch_price_data()
-    secondary_conditions = check_secondary_conditions(df)
-    if secondary_conditions[side]:
-        position_size *= POSITION_SIZE_BOOST
+    # Calculate position size based on volume ratio
+    position_size = size  # Size is already calculated based on volume ratio
     
     # Set stop loss and take profit
     if stop_loss is None:
@@ -606,16 +615,6 @@ def close_position(price, reason=''):
         'take_profit': 0.0
     }
 
-def calculate_position_size(current_price, volume_ratio):
-    """Calculate position size based on volume ratio"""
-    if volume_ratio >= 2.0:
-        return (paper_trading['balance'] * POSITION_SIZE_3) / current_price
-    elif volume_ratio >= 1.7:
-        return (paper_trading['balance'] * POSITION_SIZE_2) / current_price
-    elif volume_ratio >= VOLUME_THRESHOLD:
-        return (paper_trading['balance'] * POSITION_SIZE_1) / current_price
-    return 0
-
 def calculate_scale_size(current_price):
     try:
         # For testing, return a fixed reduced size
@@ -752,6 +751,39 @@ def get_worst_trade():
         print(f"Error getting worst trade: {e}")
         return 0.0
 
+def display_status_update(df, conditions, last_price):
+    """Display a status update with current conditions and metrics"""
+    print("\n" + "="*50)
+    print(f"Status Update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*50)
+    print(f"Current Price: ${last_price:.2f}")
+    print(f"Current Balance: ${paper_trading['balance']:.2f}")
+    print(f"Total PnL: ${paper_trading['total_pnl']:.2f}")
+    print(f"Win Rate: {(paper_trading['win_trades'] / len(paper_trading['trades'])*100 if paper_trading['trades'] else 0):.1f}%")
+    
+    print("\nTrading Conditions:")
+    print(f"Volume Ratio: {conditions['volume_ratio']:.2f}x (Threshold: 1.3x)")
+    print(f"VWAP: ${conditions['vwap']:.2f}")
+    print(f"ATR: ${conditions['atr']:.2f}")
+    
+    print("\nLong Conditions Met:" if conditions['long'] and conditions['volume_spike'] else "\nLong Conditions Not Met:")
+    print(f"✓ Price > VWAP + 0.3×ATR") if conditions['long'] else print("✗ Price > VWAP + 0.3×ATR")
+    print(f"✓ Volume > 1.3x 20MA") if conditions['volume_spike'] else print("✗ Volume > 1.3x 20MA")
+    print(f"✓ Secondary (VWAP/SuperTrend)") if conditions['secondary']['long'] else print("✗ Secondary (VWAP/SuperTrend)")
+    
+    print("\nShort Conditions Met:" if conditions['short'] and conditions['volume_spike'] else "\nShort Conditions Not Met:")
+    print(f"✓ Price < VWAP - 0.3×ATR") if conditions['short'] else print("✗ Price < VWAP - 0.3×ATR")
+    print(f"✓ Volume > 1.3x 20MA") if conditions['volume_spike'] else print("✗ Volume > 1.3x 20MA")
+    print(f"✓ Secondary (VWAP/SuperTrend)") if conditions['secondary']['short'] else print("✗ Secondary (VWAP/SuperTrend)")
+    
+    if paper_trading['position']['side']:
+        print(f"\nActive {paper_trading['position']['side'].upper()} Position:")
+        print(f"Entry: ${paper_trading['position']['entry_price']:.2f}")
+        print(f"Size: {paper_trading['position']['size']:.6f} BTC")
+        print(f"Unrealized PnL: ${paper_trading['position']['unrealized_pnl']:.2f}")
+    
+    print("="*50)
+
 while True:
     try:
         current_time = time.time()
@@ -768,47 +800,81 @@ while True:
         # Update paper trading position PnL
         update_position_pnl(last_price)
         
-        # Save data for dashboard (more frequent updates when position is active)
-        if paper_trading['position']['side'] is not None:
-            save_bot_data(df, last_price, atr.iloc[-1])
-            # Display active position info
-            print(f"\n[ACTIVE POSITION] {paper_trading['position']['side'].upper()}")
-            print(f"Entry Price: {paper_trading['position']['entry_price']:.2f} USDT")
-            print(f"Current Price: {last_price:.2f} USDT")
-            print(f"Position Size: {paper_trading['position']['size']:.6f} BTC")
-            print(f"Unrealized PnL: {paper_trading['position']['unrealized_pnl']:.2f} USDT")
-            print("-" * 30)
-        else:
-            # Regular interval updates when no position
-            if current_time - last_summary_time >= SUMMARY_INTERVAL:
-                save_bot_data(df, last_price, atr.iloc[-1])
-                display_performance_summary()
-                last_summary_time = current_time
-        
         # Get trading conditions
-        long_conditions = check_primary_conditions(df)
-        short_conditions = check_primary_conditions(df)
+        conditions = check_primary_conditions(df)
         
-        # Trading logic for opening new positions
-        if long_conditions['long'] and long_conditions['volume_spike']:
-            entry_price = last_price
-            position_size = calculate_position_size(entry_price, long_conditions['volume_ratio'])
-            if position_size > 0:
-                print(f"\n[TRADE SIGNAL] Long entry at {entry_price:.2f} USDT")
-                print(f"Position Size: {position_size:.6f} BTC ({long_conditions['position_size']*100:.1f}% of capital)")
-                stop_loss = entry_price * 0.996
-                take_profit = entry_price * 1.007
-                open_position('long', position_size, entry_price, stop_loss, take_profit)
-
-        if short_conditions['short'] and short_conditions['volume_spike']:
-            entry_price = last_price
-            position_size = calculate_position_size(entry_price, short_conditions['volume_ratio'])
-            if position_size > 0:
-                print(f"\n[TRADE SIGNAL] Short entry at {entry_price:.2f} USDT")
-                print(f"Position Size: {position_size:.6f} BTC ({short_conditions['position_size']*100:.1f}% of capital)")
-                stop_loss = entry_price * 1.004
-                take_profit = entry_price * 0.993
-                open_position('short', position_size, entry_price, stop_loss, take_profit)
+        # Save data for dashboard - different intervals based on position status
+        if paper_trading['position']['side'] is not None:
+            # Save data every minute when position is active
+            if current_time - last_summary_time >= 60:  # 60 seconds = 1 minute
+                save_bot_data(df, last_price, atr.iloc[-1])
+                display_status_update(df, conditions, last_price)
+                last_summary_time = current_time
+        else:
+            # Save data every 5 minutes when no position is active
+            if current_time - last_summary_time >= 300:  # 300 seconds = 5 minutes
+                save_bot_data(df, last_price, atr.iloc[-1])
+                display_status_update(df, conditions, last_price)
+                last_summary_time = current_time
+            
+        # Trading logic for opening new positions or scaling in
+        volume_ratio = conditions['volume_ratio']
+        entry_price = last_price
+        current_position = paper_trading['position']
+        current_size = current_position['size'] if current_position['side'] else 0.0
+        capital = paper_trading['balance']
+        max_position = (capital * 0.05) / entry_price
+        
+        if conditions['long'] and conditions['volume_spike']:
+            if current_position['side'] is None:
+                # No position, open with 0.5% if volume >= 1.3x
+                if volume_ratio >= 1.3:
+                    position_size = (capital * 0.005) / entry_price
+                    print(f"\n[TRADE SIGNAL] Long entry at {entry_price:.2f} USDT")
+                    print(f"Position Size: {position_size:.6f} BTC (0.5% of capital)")
+                    stop_loss = entry_price * 0.996
+                    take_profit = entry_price * 1.007
+                    open_position('long', position_size, entry_price, stop_loss, take_profit)
+            elif current_position['side'] == 'long':
+                # Scale in at 1.7x and 2.0x
+                if volume_ratio >= 2.0 and current_size < max_position:
+                    add_size = max_position - current_size
+                    if add_size > 0:
+                        print(f"\n[TRADE SIGNAL] Scaling in to max at {entry_price:.2f} USDT")
+                        print(f"Adding: {add_size:.6f} BTC (to reach 5% of capital)")
+                        paper_trading['position']['size'] += add_size
+                elif volume_ratio >= 1.7 and current_size < (capital * 0.015) / entry_price:
+                    target_size = (capital * 0.015) / entry_price
+                    add_size = target_size - current_size
+                    if add_size > 0:
+                        print(f"\n[TRADE SIGNAL] Scaling in at {entry_price:.2f} USDT")
+                        print(f"Adding: {add_size:.6f} BTC (to reach 1.5% of capital)")
+                        paper_trading['position']['size'] += add_size
+        if conditions['short'] and conditions['volume_spike']:
+            if current_position['side'] is None:
+                # No position, open with 0.5% if volume >= 1.3x
+                if volume_ratio >= 1.3:
+                    position_size = (capital * 0.005) / entry_price
+                    print(f"\n[TRADE SIGNAL] Short entry at {entry_price:.2f} USDT")
+                    print(f"Position Size: {position_size:.6f} BTC (0.5% of capital)")
+                    stop_loss = entry_price * 1.004
+                    take_profit = entry_price * 0.993
+                    open_position('short', position_size, entry_price, stop_loss, take_profit)
+            elif current_position['side'] == 'short':
+                # Scale in at 1.7x and 2.0x
+                if volume_ratio >= 2.0 and current_size < max_position:
+                    add_size = max_position - current_size
+                    if add_size > 0:
+                        print(f"\n[TRADE SIGNAL] Scaling in to max at {entry_price:.2f} USDT")
+                        print(f"Adding: {add_size:.6f} BTC (to reach 5% of capital)")
+                        paper_trading['position']['size'] += add_size
+                elif volume_ratio >= 1.7 and current_size < (capital * 0.015) / entry_price:
+                    target_size = (capital * 0.015) / entry_price
+                    add_size = target_size - current_size
+                    if add_size > 0:
+                        print(f"\n[TRADE SIGNAL] Scaling in at {entry_price:.2f} USDT")
+                        print(f"Adding: {add_size:.6f} BTC (to reach 1.5% of capital)")
+                        paper_trading['position']['size'] += add_size
 
     except Exception as e:
         print(f"Error in main loop: {e}")
