@@ -249,20 +249,8 @@ def check_primary_conditions(df):
     vwap_atr_long = vwap + (ATR_MULTIPLIER * atr)
     vwap_atr_short = vwap - (ATR_MULTIPLIER * atr)
     
-    # Log detailed condition information
-    print("\n=== Detailed Condition Analysis ===")
-    print(f"Current Price: {current_price:.2f} USDT")
-    print(f"VWAP: {vwap:.2f} USDT")
-    print(f"ATR: {atr:.2f} USDT")
-    print(f"VWAP + 0.3×ATR: {vwap_atr_long:.2f} USDT")
-    print(f"VWAP - 0.3×ATR: {vwap_atr_short:.2f} USDT")
-    print(f"Current Volume: {df['volume'].iloc[-1]:.2f}")
-    print(f"20-period Volume MA: {volume_ma.iloc[-1]:.2f}")
-    print(f"Volume Ratio: {volume_ratio:.2f}x")
-    print(f"Price > VWAP + 0.3×ATR: {'YES' if current_price > vwap_atr_long else 'NO'}")
-    print(f"Price < VWAP - 0.3×ATR: {'YES' if current_price < vwap_atr_short else 'NO'}")
-    print(f"Volume Threshold Met: {'YES' if volume_ratio >= VOLUME_THRESHOLD else 'NO'}")
-    print("=" * 30)
+    # Check SuperTrend condition
+    supertrend_bullish = df['supertrend'].iloc[-1]
     
     # Determine position size based on volume
     position_size = 0
@@ -273,6 +261,10 @@ def check_primary_conditions(df):
     elif volume_ratio >= VOLUME_THRESHOLD:
         position_size = POSITION_SIZE_1
     
+    # Check secondary conditions
+    above_vwap = current_price > vwap
+    below_vwap = current_price < vwap
+    
     return {
         'long': current_price > vwap_atr_long and volume_ratio >= VOLUME_THRESHOLD,
         'short': current_price < vwap_atr_short and volume_ratio >= VOLUME_THRESHOLD,
@@ -280,7 +272,11 @@ def check_primary_conditions(df):
         'volume_ratio': volume_ratio,
         'position_size': position_size,
         'vwap': vwap,
-        'atr': atr
+        'atr': atr,
+        'secondary': {
+            'long': above_vwap or supertrend_bullish,
+            'short': below_vwap or (not supertrend_bullish)
+        }
     }
 
 def check_secondary_conditions(df):
@@ -320,28 +316,21 @@ def save_bot_data(df, last_price, atr_value):
                 'timestamp': str(trade['timestamp'])
             })
 
-        # Get trading conditions (convert numpy bools to Python bools)
-        long_conditions = check_primary_conditions(df)
-        short_conditions = check_primary_conditions(df)
+        # Get trading conditions
+        conditions = check_primary_conditions(df)
         
-        # Convert numpy bools to Python bools
-        long_conditions = {k: bool(v) for k, v in long_conditions.items()}
-        short_conditions = {k: bool(v) for k, v in short_conditions.items()}
-
-        # Current values for display (ensure all values are native Python types)
+        # Current values for display
         current_values = {
             'price': float(last_price),
             'vwap': float(df['vwap'].iloc[-1]),
-            'donchian_high': float(df['donchian_high'].iloc[-1]),
-            'donchian_low': float(df['donchian_low'].iloc[-1]),
-            'donchian_mid': float(df['donchian_mid'].iloc[-1]),
+            'volume': float(df['volume'].iloc[-1]),
+            'volume_ma': float(df['volume'].rolling(window=20).mean().iloc[-1]),
             'volume_spike_ratio': float(df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]),
             'atr': float(atr_value),
-            'atr_threshold': float(df['atr'].rolling(window=20).median().iloc[-1]),
             'supertrend': bool(df['supertrend'].iloc[-1])
         }
 
-        # Position data (ensure all values are native Python types)
+        # Position data
         position_data = {
             'side': str(paper_trading['position']['side']) if paper_trading['position']['side'] else None,
             'size': float(paper_trading['position']['size']),
@@ -363,9 +352,6 @@ def save_bot_data(df, last_price, atr_value):
                 'close': float(row['close']),
                 'volume': float(row['volume']),
                 'vwap': float(row['vwap']),
-                'donchian_high': float(row['donchian_high']),
-                'donchian_low': float(row['donchian_low']),
-                'donchian_mid': float(row['donchian_mid']),
                 'supertrend': bool(row['supertrend'])
             })
 
@@ -380,8 +366,8 @@ def save_bot_data(df, last_price, atr_value):
             'recent_trades': recent_trades,
             'position': position_data,
             'trading_conditions': {
-                'long_conditions': long_conditions,
-                'short_conditions': short_conditions,
+                'long_conditions': conditions,
+                'short_conditions': conditions,
                 'current_values': current_values
             },
             'market_data': {
@@ -396,7 +382,7 @@ def save_bot_data(df, last_price, atr_value):
                 'best_trade': float(get_best_trade()),
                 'worst_trade': float(get_worst_trade())
             },
-            'price_history': price_history  # Add price history to the data
+            'price_history': price_history
         }
 
         # Save to database
@@ -413,7 +399,7 @@ def open_position(side, size, price, stop_loss=None, take_profit=None):
         return False
     
     # Calculate position size based on risk
-    position_size = calculate_position_size(price)
+    position_size = calculate_position_size(price, size)
     
     # Check secondary conditions for position size boost
     df = fetch_price_data()
@@ -609,11 +595,11 @@ def close_position(price, reason=''):
 
 def calculate_position_size(current_price, volume_ratio):
     """Calculate position size based on volume ratio"""
-    if volume_ratio >= VOLUME_THRESHOLD_3:
+    if volume_ratio >= 2.0:
         return (paper_trading['balance'] * POSITION_SIZE_3) / current_price
-    elif volume_ratio >= VOLUME_THRESHOLD_2:
+    elif volume_ratio >= 1.7:
         return (paper_trading['balance'] * POSITION_SIZE_2) / current_price
-    elif volume_ratio >= VOLUME_THRESHOLD_1:
+    elif volume_ratio >= VOLUME_THRESHOLD:
         return (paper_trading['balance'] * POSITION_SIZE_1) / current_price
     return 0
 
@@ -774,14 +760,11 @@ while True:
             save_bot_data(df, last_price, atr.iloc[-1])
             # Display active position info
             print(f"\n[ACTIVE POSITION] {paper_trading['position']['side'].upper()}")
-            print(f"Current Price: {last_price:.2f} USDT")
             print(f"Entry Price: {paper_trading['position']['entry_price']:.2f} USDT")
+            print(f"Current Price: {last_price:.2f} USDT")
             print(f"Position Size: {paper_trading['position']['size']:.6f} BTC")
             print(f"Unrealized PnL: {paper_trading['position']['unrealized_pnl']:.2f} USDT")
-            print(f"Stop Loss: {paper_trading['position']['stop_loss']:.2f} USDT")
-            print(f"Take Profit: {paper_trading['position']['take_profit']:.2f} USDT")
-            print(f"Time in Trade: {(datetime.now() - datetime.strptime(paper_trading['trades'][-1]['timestamp'], '%Y-%m-%d %H:%M:%S')).seconds} seconds")
-            print("-" * 50)
+            print("-" * 30)
         else:
             # Regular interval updates when no position
             if current_time - last_summary_time >= SUMMARY_INTERVAL:
@@ -793,64 +776,26 @@ while True:
         long_conditions = check_primary_conditions(df)
         short_conditions = check_primary_conditions(df)
         
-        # Get current price once for all conditions
-        current_price = df['close'].iloc[-1]
-        
-        # Display trading conditions
-        print("\n=== Trading Conditions ===")
-        print(f"Current Price: {current_price:.2f} USDT")
-        print(f"VWAP: {long_conditions['vwap']:.2f} USDT")
-        print(f"ATR: {long_conditions['atr']:.2f} USDT")
-        print(f"Volume Ratio: {long_conditions['volume_ratio']:.2f}x")
-        
-        print("\nLong Entry Conditions:")
-        print("Primary Conditions:")
-        print(f"  {'YES' if long_conditions['long'] else 'NO '} Price > VWAP + 0.3×ATR")
-        print(f"  {'YES' if long_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD}x 20MA")
-        
-        # Get secondary conditions
-        secondary = check_secondary_conditions(df)
-        print("\nSecondary Conditions:")
-        print(f"  {'YES' if secondary['long'] else 'NO '} Price Above VWAP or SuperTrend Bullish")
-        
-        print("\nShort Entry Conditions:")
-        print("Primary Conditions:")
-        print(f"  {'YES' if short_conditions['short'] else 'NO '} Price < VWAP - 0.3×ATR")
-        print(f"  {'YES' if short_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD}x 20MA")
-        
-        print("\nSecondary Conditions:")
-        print(f"  {'YES' if secondary['short'] else 'NO '} Price Below VWAP or SuperTrend Bearish")
-        print("=" * 30)
-        
-        if paper_trading['position']['side']:
-            print(f"\n[PAPER] Active {paper_trading['position']['side']} position:")
-            print(f"Size: {paper_trading['position']['size']:.6f} BTC")
-            print(f"Entry: {paper_trading['position']['entry_price']:.2f} USDT")
-            print(f"Current PnL: {paper_trading['position']['unrealized_pnl']:.2f} USDT")
-            print(f"Stop Loss: {paper_trading['position']['stop_loss']:.2f} USDT")
-            print(f"Take Profit: {paper_trading['position']['take_profit']:.2f} USDT")
-            print("[PAPER] Position active - waiting for exit signals")
-        else:
-            # Trading logic for opening new positions
-            if long_conditions['long'] and long_conditions['volume_spike']:
-                entry_price = last_price
-                position_size = calculate_position_size(entry_price, long_conditions['volume_ratio'])
-                if position_size > 0:
-                    print(f"\n[TRADE SIGNAL] Long entry at {entry_price:.2f} USDT")
-                    print(f"Position Size: {position_size:.6f} BTC ({long_conditions['position_size']*100:.1f}% of capital)")
-                    stop_loss = entry_price * 0.996
-                    take_profit = entry_price * 1.007
-                    open_position('long', position_size, entry_price, stop_loss, take_profit)
+        # Trading logic for opening new positions
+        if long_conditions['long'] and long_conditions['volume_spike']:
+            entry_price = last_price
+            position_size = calculate_position_size(entry_price, long_conditions['volume_ratio'])
+            if position_size > 0:
+                print(f"\n[TRADE SIGNAL] Long entry at {entry_price:.2f} USDT")
+                print(f"Position Size: {position_size:.6f} BTC ({long_conditions['position_size']*100:.1f}% of capital)")
+                stop_loss = entry_price * 0.996
+                take_profit = entry_price * 1.007
+                open_position('long', position_size, entry_price, stop_loss, take_profit)
 
-            if short_conditions['short'] and short_conditions['volume_spike']:
-                entry_price = last_price
-                position_size = calculate_position_size(entry_price, short_conditions['volume_ratio'])
-                if position_size > 0:
-                    print(f"\n[TRADE SIGNAL] Short entry at {entry_price:.2f} USDT")
-                    print(f"Position Size: {position_size:.6f} BTC ({short_conditions['position_size']*100:.1f}% of capital)")
-                    stop_loss = entry_price * 1.004
-                    take_profit = entry_price * 0.993
-                    open_position('short', position_size, entry_price, stop_loss, take_profit)
+        if short_conditions['short'] and short_conditions['volume_spike']:
+            entry_price = last_price
+            position_size = calculate_position_size(entry_price, short_conditions['volume_ratio'])
+            if position_size > 0:
+                print(f"\n[TRADE SIGNAL] Short entry at {entry_price:.2f} USDT")
+                print(f"Position Size: {position_size:.6f} BTC ({short_conditions['position_size']*100:.1f}% of capital)")
+                stop_loss = entry_price * 1.004
+                take_profit = entry_price * 0.993
+                open_position('short', position_size, entry_price, stop_loss, take_profit)
 
     except Exception as e:
         print(f"Error in main loop: {e}")

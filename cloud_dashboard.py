@@ -309,7 +309,7 @@ def display_trading_conditions(data):
         st.markdown(f"- Volume > 1.3x 20MA: {'✅' if data['trading_conditions']['long_conditions']['volume_spike'] else '❌'}")
         
         st.markdown("Secondary Conditions:")
-        st.markdown(f"- Price Above VWAP or SuperTrend Bullish: {'✅' if data['trading_conditions']['long_conditions']['secondary'] else '❌'}")
+        st.markdown(f"- Price Above VWAP or SuperTrend Bullish: {'✅' if data['trading_conditions']['long_conditions']['secondary']['long'] else '❌'}")
     
     with col2:
         st.markdown("**Short Entry Conditions**")
@@ -318,7 +318,7 @@ def display_trading_conditions(data):
         st.markdown(f"- Volume > 1.3x 20MA: {'✅' if data['trading_conditions']['short_conditions']['volume_spike'] else '❌'}")
         
         st.markdown("Secondary Conditions:")
-        st.markdown(f"- Price Below VWAP or SuperTrend Bearish: {'✅' if data['trading_conditions']['short_conditions']['secondary'] else '❌'}")
+        st.markdown(f"- Price Below VWAP or SuperTrend Bearish: {'✅' if data['trading_conditions']['short_conditions']['secondary']['short'] else '❌'}")
 
 def display_market_data(data):
     """Display current market data"""
