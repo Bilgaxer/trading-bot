@@ -130,82 +130,10 @@ def main():
             )
 
         # Display trading conditions
-        st.subheader("Trading Conditions")
-        conditions = data.get('trading_conditions', {})
-        current_values = conditions.get('current_values', {})
-        
-        # Create two columns for long and short conditions
-        long_col, short_col = st.columns(2)
-        
-        with long_col:
-            st.markdown("### Long Entry Conditions")
-            
-            # Primary Conditions
-            st.markdown("#### Primary Conditions")
-            price_above_donchian = current_values.get('price', 0) > current_values.get('donchian_high', 0)
-            volume_spike = current_values.get('volume_spike_ratio', 0) > 1.3
-            
-            st.markdown(f"**{'✅' if price_above_donchian else '❌'}** Price Above Donchian High")
-            st.markdown(f"**{'✅' if volume_spike else '❌'}** Volume > 1.3x 20MA")
-            
-            # Secondary Conditions
-            st.markdown("#### Secondary Conditions")
-            price_above_vwap = current_values.get('price', 0) > current_values.get('vwap', 0)
-            supertrend_bullish = current_values.get('supertrend', False)
-            
-            st.markdown(f"**{'✅' if price_above_vwap else '❌'}** Price Above VWAP")
-            st.markdown(f"**{'✅' if supertrend_bullish else '❌'}** SuperTrend Bullish")
-            
-            # Show current values
-            st.markdown("#### Current Values")
-            st.write(f"Price: ${current_values.get('price', 0):.2f}")
-            st.write(f"Donchian High: ${current_values.get('donchian_high', 0):.2f}")
-            st.write(f"VWAP: ${current_values.get('vwap', 0):.2f}")
-            st.write(f"Volume Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
-        
-        with short_col:
-            st.markdown("### Short Entry Conditions")
-            
-            # Primary Conditions
-            st.markdown("#### Primary Conditions")
-            price_below_donchian = current_values.get('price', 0) < current_values.get('donchian_low', 0)
-            
-            st.markdown(f"**{'✅' if price_below_donchian else '❌'}** Price Below Donchian Low")
-            st.markdown(f"**{'✅' if volume_spike else '❌'}** Volume > 1.3x 20MA")
-            
-            # Secondary Conditions
-            st.markdown("#### Secondary Conditions")
-            price_below_vwap = current_values.get('price', 0) < current_values.get('vwap', 0)
-            supertrend_bearish = not current_values.get('supertrend', False)
-            
-            st.markdown(f"**{'✅' if price_below_vwap else '❌'}** Price Below VWAP")
-            st.markdown(f"**{'✅' if supertrend_bearish else '❌'}** SuperTrend Bearish")
-            
-            # Show current values
-            st.markdown("#### Current Values")
-            st.write(f"Price: ${current_values.get('price', 0):.2f}")
-            st.write(f"Donchian Low: ${current_values.get('donchian_low', 0):.2f}")
-            st.write(f"VWAP: ${current_values.get('vwap', 0):.2f}")
-            st.write(f"Volume Ratio: {current_values.get('volume_spike_ratio', 0):.2f}x")
+        display_trading_conditions(data)
 
-        # Display technical indicators
-        st.subheader("Market Data")
-        tech_cols = st.columns(5)
-        
-        with tech_cols[0]:
-            st.metric("Donchian High", f"${current_values.get('donchian_high', 0):.2f}")
-        
-        with tech_cols[1]:
-            st.metric("Donchian Low", f"${current_values.get('donchian_low', 0):.2f}")
-        
-        with tech_cols[2]:
-            st.metric("VWAP", f"${current_values.get('vwap', 0):.2f}")
-        
-        with tech_cols[3]:
-            st.metric("Volume Ratio", f"{current_values.get('volume_spike_ratio', 0):.2f}x")
-            
-        with tech_cols[4]:
-            st.metric("ATR", f"${data['market_data'].get('current_atr', 0):.2f}")
+        # Display market data
+        display_market_data(data)
 
         # Create price chart with mobile-friendly layout
         if 'price_history' in data:
@@ -366,6 +294,56 @@ def main():
 
         # Last update time in sidebar
         st.sidebar.write(f"Last Updated: {data['performance_summary']['last_update']}")
+
+def display_trading_conditions(data):
+    """Display current trading conditions"""
+    st.subheader("Trading Conditions")
+    
+    # Create two columns for long and short conditions
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Long Entry Conditions**")
+        st.markdown("Primary Conditions:")
+        st.markdown(f"- Price > VWAP + 0.3×ATR: {'✅' if data['trading_conditions']['long_conditions']['long'] else '❌'}")
+        st.markdown(f"- Volume > 1.3x 20MA: {'✅' if data['trading_conditions']['long_conditions']['volume_spike'] else '❌'}")
+        
+        st.markdown("Secondary Conditions:")
+        st.markdown(f"- Price Above VWAP or SuperTrend Bullish: {'✅' if data['trading_conditions']['long_conditions']['secondary'] else '❌'}")
+    
+    with col2:
+        st.markdown("**Short Entry Conditions**")
+        st.markdown("Primary Conditions:")
+        st.markdown(f"- Price < VWAP - 0.3×ATR: {'✅' if data['trading_conditions']['short_conditions']['short'] else '❌'}")
+        st.markdown(f"- Volume > 1.3x 20MA: {'✅' if data['trading_conditions']['short_conditions']['volume_spike'] else '❌'}")
+        
+        st.markdown("Secondary Conditions:")
+        st.markdown(f"- Price Below VWAP or SuperTrend Bearish: {'✅' if data['trading_conditions']['short_conditions']['secondary'] else '❌'}")
+
+def display_market_data(data):
+    """Display current market data"""
+    st.subheader("Market Data")
+    
+    # Create three columns for price, volume, and indicators
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("**Price Data**")
+        st.markdown(f"Current Price: {data['market_data']['current_price']:.2f} USDT")
+        st.markdown(f"VWAP: {data['trading_conditions']['current_values']['vwap']:.2f} USDT")
+        st.markdown(f"ATR: {data['trading_conditions']['current_values']['atr']:.2f} USDT")
+    
+    with col2:
+        st.markdown("**Volume Data**")
+        st.markdown(f"Current Volume: {data['trading_conditions']['current_values']['volume']:.2f}")
+        st.markdown(f"20-period Volume MA: {data['trading_conditions']['current_values']['volume_ma']:.2f}")
+        st.markdown(f"Volume Ratio: {data['trading_conditions']['current_values']['volume_spike_ratio']:.2f}x")
+    
+    with col3:
+        st.markdown("**Indicators**")
+        st.markdown(f"SuperTrend: {'Bullish' if data['trading_conditions']['current_values']['supertrend'] else 'Bearish'}")
+        st.markdown(f"VWAP + 0.3×ATR: {data['trading_conditions']['current_values']['vwap'] + (0.3 * data['trading_conditions']['current_values']['atr']):.2f} USDT")
+        st.markdown(f"VWAP - 0.3×ATR: {data['trading_conditions']['current_values']['vwap'] - (0.3 * data['trading_conditions']['current_values']['atr']):.2f} USDT")
 
 if __name__ == "__main__":
     main() 

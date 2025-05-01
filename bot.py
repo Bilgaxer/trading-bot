@@ -96,14 +96,12 @@ active_position = {
 }
 
 # Trading parameters
-MAX_SCALES = 3  # Maximum number of scaling entries
-SCALE_INTERVAL = 0.02  # 2% price movement for each scale
-TRAILING_STOP_INITIAL = 0.02  # 2% initial trailing stop
-TRAILING_STOP_STEP = 0.005  # 0.5% step for trailing stop
-RISK_PER_TRADE = 0.01  # 1% risk per trade
-DONCHIAN_PERIOD = 20  # Period for Donchian Channel
 VOLUME_THRESHOLD = 1.3  # Volume must be 1.3x average
-POSITION_SIZE_BOOST = 1.2  # Increase position size by 20% if secondary conditions met
+ATR_MULTIPLIER = 0.3  # 0.3 × ATR for VWAP offset
+POSITION_SIZE_1 = 0.005  # 0.5% of capital for initial position
+POSITION_SIZE_2 = 0.01   # 1% of capital for second addition
+POSITION_SIZE_3 = 0.05   # 5% of capital max position size
+MAX_POSITION_SIZE = 0.05  # 5% of total capital cap per trade
 TP_PERCENTAGE = 0.007  # 0.7% take profit
 INITIAL_STOP_PERCENTAGE = 0.004  # 0.4% initial stop loss
 
@@ -111,10 +109,6 @@ INITIAL_STOP_PERCENTAGE = 0.004  # 0.4% initial stop loss
 VOLUME_THRESHOLD_1 = 1.3  # Initial position threshold
 VOLUME_THRESHOLD_2 = 1.7  # Add to position threshold
 VOLUME_THRESHOLD_3 = 2.0  # Max position threshold
-POSITION_SIZE_1 = 0.005  # 0.5% of capital for initial position
-POSITION_SIZE_2 = 0.01   # 1% of capital for second addition
-POSITION_SIZE_3 = 0.05   # 5% of capital max position size
-MAX_POSITION_SIZE = 0.05  # 5% of total capital cap per trade
 
 # FinBERT setup
 tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
@@ -155,7 +149,7 @@ def check_volume_spike(df):
     volume_ma = df['volume'].rolling(window=20).mean()
     return df['volume'].iloc[-1] > volume_ma.iloc[-1] * 1.05
 
-def calculate_donchian_channel(df, period=DONCHIAN_PERIOD):
+def calculate_donchian_channel(df, period=20):
     """Calculate Donchian Channel"""
     df['donchian_high'] = df['high'].rolling(window=period).max()
     df['donchian_low'] = df['low'].rolling(window=period).min()
@@ -244,46 +238,67 @@ def calculate_atr_threshold(df):
 def check_primary_conditions(df):
     """Check primary trading conditions"""
     current_price = df['close'].iloc[-1]
-    prev_price = df['close'].iloc[-2]
-    
-    # Check Donchian Channel breakout
-    donchian_breakout_up = prev_price <= df['donchian_high'].iloc[-2] and current_price > df['donchian_high'].iloc[-1]
-    donchian_breakout_down = prev_price >= df['donchian_low'].iloc[-2] and current_price < df['donchian_low'].iloc[-1]
+    vwap = df['vwap'].iloc[-1]
+    atr = df['atr'].iloc[-1]
     
     # Check volume condition
     volume_ma = df['volume'].rolling(window=20).mean()
     volume_ratio = df['volume'].iloc[-1] / volume_ma.iloc[-1]
     
+    # Calculate VWAP + ATR thresholds
+    vwap_atr_long = vwap + (ATR_MULTIPLIER * atr)
+    vwap_atr_short = vwap - (ATR_MULTIPLIER * atr)
+    
+    # Log detailed condition information
+    print("\n=== Detailed Condition Analysis ===")
+    print(f"Current Price: {current_price:.2f} USDT")
+    print(f"VWAP: {vwap:.2f} USDT")
+    print(f"ATR: {atr:.2f} USDT")
+    print(f"VWAP + 0.3×ATR: {vwap_atr_long:.2f} USDT")
+    print(f"VWAP - 0.3×ATR: {vwap_atr_short:.2f} USDT")
+    print(f"Current Volume: {df['volume'].iloc[-1]:.2f}")
+    print(f"20-period Volume MA: {volume_ma.iloc[-1]:.2f}")
+    print(f"Volume Ratio: {volume_ratio:.2f}x")
+    print(f"Price > VWAP + 0.3×ATR: {'YES' if current_price > vwap_atr_long else 'NO'}")
+    print(f"Price < VWAP - 0.3×ATR: {'YES' if current_price < vwap_atr_short else 'NO'}")
+    print(f"Volume Threshold Met: {'YES' if volume_ratio >= VOLUME_THRESHOLD else 'NO'}")
+    print("=" * 30)
+    
     # Determine position size based on volume
     position_size = 0
-    if volume_ratio >= VOLUME_THRESHOLD_3:
+    if volume_ratio >= 2.0:
         position_size = POSITION_SIZE_3
-    elif volume_ratio >= VOLUME_THRESHOLD_2:
+    elif volume_ratio >= 1.7:
         position_size = POSITION_SIZE_2
-    elif volume_ratio >= VOLUME_THRESHOLD_1:
+    elif volume_ratio >= VOLUME_THRESHOLD:
         position_size = POSITION_SIZE_1
     
     return {
-        'long': donchian_breakout_up and volume_ratio >= VOLUME_THRESHOLD_1,
-        'short': donchian_breakout_down and volume_ratio >= VOLUME_THRESHOLD_1,
-        'volume_spike': volume_ratio >= VOLUME_THRESHOLD_1,
+        'long': current_price > vwap_atr_long and volume_ratio >= VOLUME_THRESHOLD,
+        'short': current_price < vwap_atr_short and volume_ratio >= VOLUME_THRESHOLD,
+        'volume_spike': volume_ratio >= VOLUME_THRESHOLD,
         'volume_ratio': volume_ratio,
-        'position_size': position_size
+        'position_size': position_size,
+        'vwap': vwap,
+        'atr': atr
     }
 
 def check_secondary_conditions(df):
     """Check secondary confirmation conditions"""
     current_price = df['close'].iloc[-1]
+    vwap = df['vwap'].iloc[-1]
+    atr = df['atr'].iloc[-1]
     
     # VWAP condition
-    above_vwap = current_price > df['vwap'].iloc[-1]
+    above_vwap = current_price > vwap
+    below_vwap = current_price < vwap
     
     # SuperTrend condition
     supertrend_bullish = df['supertrend'].iloc[-1]
     
     return {
         'long': above_vwap or supertrend_bullish,
-        'short': (not above_vwap) or (not supertrend_bullish)
+        'short': below_vwap or (not supertrend_bullish)
     }
 
 def save_bot_data(df, last_price, atr_value):
@@ -748,7 +763,6 @@ while True:
             continue
             
         atr = calculate_atr(df)
-        atr_threshold = calculate_atr_threshold(df)
         update_funding_rate()
         last_price = df['close'].iloc[-1]
         
@@ -785,26 +799,27 @@ while True:
         # Display trading conditions
         print("\n=== Trading Conditions ===")
         print(f"Current Price: {current_price:.2f} USDT")
+        print(f"VWAP: {long_conditions['vwap']:.2f} USDT")
+        print(f"ATR: {long_conditions['atr']:.2f} USDT")
         print(f"Volume Ratio: {long_conditions['volume_ratio']:.2f}x")
-        print("Long Entry Conditions:")
+        
+        print("\nLong Entry Conditions:")
         print("Primary Conditions:")
-        print(f"  {'YES' if long_conditions['long'] else 'NO '} Price crosses above Donchian High")
-        print(f"  {'YES' if long_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD_1}x 20MA")
+        print(f"  {'YES' if long_conditions['long'] else 'NO '} Price > VWAP + 0.3×ATR")
+        print(f"  {'YES' if long_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD}x 20MA")
         
         # Get secondary conditions
         secondary = check_secondary_conditions(df)
         print("\nSecondary Conditions:")
-        print(f"  {'YES' if current_price > df['vwap'].iloc[-1] else 'NO '} Price Above VWAP")
-        print(f"  {'YES' if df['supertrend'].iloc[-1] else 'NO '} SuperTrend Bullish")
+        print(f"  {'YES' if secondary['long'] else 'NO '} Price Above VWAP or SuperTrend Bullish")
         
         print("\nShort Entry Conditions:")
         print("Primary Conditions:")
-        print(f"  {'YES' if short_conditions['short'] else 'NO '} Price crosses below Donchian Low")
-        print(f"  {'YES' if short_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD_1}x 20MA")
+        print(f"  {'YES' if short_conditions['short'] else 'NO '} Price < VWAP - 0.3×ATR")
+        print(f"  {'YES' if short_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD}x 20MA")
         
         print("\nSecondary Conditions:")
-        print(f"  {'YES' if current_price < df['vwap'].iloc[-1] else 'NO '} Price Below VWAP")
-        print(f"  {'YES' if not df['supertrend'].iloc[-1] else 'NO '} SuperTrend Bearish")
+        print(f"  {'YES' if secondary['short'] else 'NO '} Price Below VWAP or SuperTrend Bearish")
         print("=" * 30)
         
         if paper_trading['position']['side']:
@@ -821,6 +836,8 @@ while True:
                 entry_price = last_price
                 position_size = calculate_position_size(entry_price, long_conditions['volume_ratio'])
                 if position_size > 0:
+                    print(f"\n[TRADE SIGNAL] Long entry at {entry_price:.2f} USDT")
+                    print(f"Position Size: {position_size:.6f} BTC ({long_conditions['position_size']*100:.1f}% of capital)")
                     stop_loss = entry_price * 0.996
                     take_profit = entry_price * 1.007
                     open_position('long', position_size, entry_price, stop_loss, take_profit)
@@ -829,6 +846,8 @@ while True:
                 entry_price = last_price
                 position_size = calculate_position_size(entry_price, short_conditions['volume_ratio'])
                 if position_size > 0:
+                    print(f"\n[TRADE SIGNAL] Short entry at {entry_price:.2f} USDT")
+                    print(f"Position Size: {position_size:.6f} BTC ({short_conditions['position_size']*100:.1f}% of capital)")
                     stop_loss = entry_price * 1.004
                     take_profit = entry_price * 0.993
                     open_position('short', position_size, entry_price, stop_loss, take_profit)
