@@ -107,6 +107,15 @@ POSITION_SIZE_BOOST = 1.2  # Increase position size by 20% if secondary conditio
 TP_PERCENTAGE = 0.007  # 0.7% take profit
 INITIAL_STOP_PERCENTAGE = 0.004  # 0.4% initial stop loss
 
+# Volume-based position sizing thresholds
+VOLUME_THRESHOLD_1 = 1.3  # Initial position threshold
+VOLUME_THRESHOLD_2 = 1.7  # Add to position threshold
+VOLUME_THRESHOLD_3 = 2.0  # Max position threshold
+POSITION_SIZE_1 = 0.005  # 0.5% of capital for initial position
+POSITION_SIZE_2 = 0.01   # 1% of capital for second addition
+POSITION_SIZE_3 = 0.05   # 5% of capital max position size
+MAX_POSITION_SIZE = 0.05  # 5% of total capital cap per trade
+
 # FinBERT setup
 tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
 model = AutoModelForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
@@ -189,6 +198,7 @@ def calculate_supertrend(df, period=10, multiplier=3):
     return df['supertrend']
 
 def fetch_price_data():
+    """Fetch price data and calculate indicators"""
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=100)
         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -242,12 +252,23 @@ def check_primary_conditions(df):
     
     # Check volume condition
     volume_ma = df['volume'].rolling(window=20).mean()
-    volume_spike = df['volume'].iloc[-1] > volume_ma.iloc[-1] * VOLUME_THRESHOLD
+    volume_ratio = df['volume'].iloc[-1] / volume_ma.iloc[-1]
+    
+    # Determine position size based on volume
+    position_size = 0
+    if volume_ratio >= VOLUME_THRESHOLD_3:
+        position_size = POSITION_SIZE_3
+    elif volume_ratio >= VOLUME_THRESHOLD_2:
+        position_size = POSITION_SIZE_2
+    elif volume_ratio >= VOLUME_THRESHOLD_1:
+        position_size = POSITION_SIZE_1
     
     return {
-        'long': donchian_breakout_up and volume_spike,
-        'short': donchian_breakout_down and volume_spike,
-        'volume_spike': volume_spike
+        'long': donchian_breakout_up and volume_ratio >= VOLUME_THRESHOLD_1,
+        'short': donchian_breakout_down and volume_ratio >= VOLUME_THRESHOLD_1,
+        'volume_spike': volume_ratio >= VOLUME_THRESHOLD_1,
+        'volume_ratio': volume_ratio,
+        'position_size': position_size
     }
 
 def check_secondary_conditions(df):
@@ -571,11 +592,15 @@ def close_position(price, reason=''):
         'take_profit': 0.0
     }
 
-def calculate_position_size(current_price):
-    # Risk 1% of paper trading balance
-    risk_amount = paper_trading['balance'] * 0.01
-    position_size = (risk_amount * 10) / current_price  # 10x leverage
-    return position_size
+def calculate_position_size(current_price, volume_ratio):
+    """Calculate position size based on volume ratio"""
+    if volume_ratio >= VOLUME_THRESHOLD_3:
+        return (paper_trading['balance'] * POSITION_SIZE_3) / current_price
+    elif volume_ratio >= VOLUME_THRESHOLD_2:
+        return (paper_trading['balance'] * POSITION_SIZE_2) / current_price
+    elif volume_ratio >= VOLUME_THRESHOLD_1:
+        return (paper_trading['balance'] * POSITION_SIZE_1) / current_price
+    return 0
 
 def calculate_scale_size(current_price):
     try:
@@ -717,51 +742,38 @@ while True:
     try:
         current_time = time.time()
         df = fetch_price_data()
+        if df is None:
+            print("Error fetching price data, retrying...")
+            time.sleep(5)
+            continue
+            
         atr = calculate_atr(df)
         atr_threshold = calculate_atr_threshold(df)
-        volume_spike = check_volume_spike(df)
-        update_funding_rate()  # Update funding rate every 5 minutes
+        update_funding_rate()
         last_price = df['close'].iloc[-1]
         
         # Update paper trading position PnL
         update_position_pnl(last_price)
         
-        # Save data for dashboard
-        save_bot_data(df, last_price, atr.iloc[-1])
-        
-        # Check news and sentiment every 10 minutes
-        if current_time - last_news_check > news_check_interval:
-            news_list = fetch_news()
-            last_sentiment_score = analyze_sentiment(news_list)
-            log_sentiment(last_sentiment_score, news_list)  # Log sentiment and headlines
-            print(f"News Sentiment Score: {last_sentiment_score:.3f}")
-            last_news_check = current_time
-        
-        # Display performance summary every 30 minutes
-        if current_time - last_summary_time >= SUMMARY_INTERVAL:
-            display_performance_summary()
-            last_summary_time = current_time
-        
-        # Calculate position size for new trades
-        position_size = calculate_position_size(last_price)
-
-        # Support & resistance (extended to 5-minute window)
-        recent_high = df['high'].iloc[-5:].max()  # Changed from -20 to -5 for tighter range
-        recent_low = df['low'].iloc[-5:].min()    # Changed from -20 to -5 for tighter range
-
-        breakout = last_price > recent_high
-        breakdown = last_price < recent_low
-
-        # Calculate trading conditions
-        sentiment_condition_long = (not is_sentiment_valid()) or (last_sentiment_score > 0.05)
-        sentiment_condition_short = (not is_sentiment_valid()) or (last_sentiment_score < -0.05)
-        funding_condition_long = current_funding_rate < 0.005
-        funding_condition_short = current_funding_rate > -0.005
-        atr_condition = atr.iloc[-1] > atr_threshold
-
-        print(f"\n[PAPER] Current Price: {last_price:.2f} USDT")
-        print(f"[PAPER] ATR: {atr.iloc[-1]:.2f} (Threshold: {atr_threshold:.2f})")
-        print(f"[PAPER] Balance: {paper_trading['balance']:.2f} USDT")
+        # Save data for dashboard (more frequent updates when position is active)
+        if paper_trading['position']['side'] is not None:
+            save_bot_data(df, last_price, atr.iloc[-1])
+            # Display active position info
+            print(f"\n[ACTIVE POSITION] {paper_trading['position']['side'].upper()}")
+            print(f"Current Price: {last_price:.2f} USDT")
+            print(f"Entry Price: {paper_trading['position']['entry_price']:.2f} USDT")
+            print(f"Position Size: {paper_trading['position']['size']:.6f} BTC")
+            print(f"Unrealized PnL: {paper_trading['position']['unrealized_pnl']:.2f} USDT")
+            print(f"Stop Loss: {paper_trading['position']['stop_loss']:.2f} USDT")
+            print(f"Take Profit: {paper_trading['position']['take_profit']:.2f} USDT")
+            print(f"Time in Trade: {(datetime.now() - datetime.strptime(paper_trading['trades'][-1]['timestamp'], '%Y-%m-%d %H:%M:%S')).seconds} seconds")
+            print("-" * 50)
+        else:
+            # Regular interval updates when no position
+            if current_time - last_summary_time >= SUMMARY_INTERVAL:
+                save_bot_data(df, last_price, atr.iloc[-1])
+                display_performance_summary()
+                last_summary_time = current_time
         
         # Get trading conditions
         long_conditions = check_primary_conditions(df)
@@ -772,10 +784,12 @@ while True:
         
         # Display trading conditions
         print("\n=== Trading Conditions ===")
+        print(f"Current Price: {current_price:.2f} USDT")
+        print(f"Volume Ratio: {long_conditions['volume_ratio']:.2f}x")
         print("Long Entry Conditions:")
         print("Primary Conditions:")
         print(f"  {'YES' if long_conditions['long'] else 'NO '} Price crosses above Donchian High")
-        print(f"  {'YES' if long_conditions['volume_spike'] else 'NO '} Volume > 1.3× 20MA")
+        print(f"  {'YES' if long_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD_1}x 20MA")
         
         # Get secondary conditions
         secondary = check_secondary_conditions(df)
@@ -786,7 +800,7 @@ while True:
         print("\nShort Entry Conditions:")
         print("Primary Conditions:")
         print(f"  {'YES' if short_conditions['short'] else 'NO '} Price crosses below Donchian Low")
-        print(f"  {'YES' if short_conditions['volume_spike'] else 'NO '} Volume > 1.3× 20MA")
+        print(f"  {'YES' if short_conditions['volume_spike'] else 'NO '} Volume > {VOLUME_THRESHOLD_1}x 20MA")
         
         print("\nSecondary Conditions:")
         print(f"  {'YES' if current_price < df['vwap'].iloc[-1] else 'NO '} Price Below VWAP")
@@ -803,25 +817,25 @@ while True:
             print("[PAPER] Position active - waiting for exit signals")
         else:
             # Trading logic for opening new positions
-            if (long_conditions['long'] and 
-                long_conditions['volume_spike']):
-                
+            if long_conditions['long'] and long_conditions['volume_spike']:
                 entry_price = last_price
-                # 0.4% initial stop loss, 0.7% take profit
-                stop_loss = entry_price * 0.996
-                take_profit = entry_price * 1.007
-                open_position('long', position_size, entry_price, stop_loss, take_profit)
+                position_size = calculate_position_size(entry_price, long_conditions['volume_ratio'])
+                if position_size > 0:
+                    stop_loss = entry_price * 0.996
+                    take_profit = entry_price * 1.007
+                    open_position('long', position_size, entry_price, stop_loss, take_profit)
 
-            if (short_conditions['short'] and 
-                short_conditions['volume_spike']):
-                
+            if short_conditions['short'] and short_conditions['volume_spike']:
                 entry_price = last_price
-                # 0.4% initial stop loss, 0.7% take profit
-                stop_loss = entry_price * 1.004
-                take_profit = entry_price * 0.993
-                open_position('short', position_size, entry_price, stop_loss, take_profit)
+                position_size = calculate_position_size(entry_price, short_conditions['volume_ratio'])
+                if position_size > 0:
+                    stop_loss = entry_price * 1.004
+                    take_profit = entry_price * 0.993
+                    open_position('short', position_size, entry_price, stop_loss, take_profit)
 
     except Exception as e:
         print(f"Error in main loop: {e}")
 
-    time.sleep(60)
+    # Shorter sleep when position is active
+    sleep_time = 5 if paper_trading['position']['side'] is not None else 60
+    time.sleep(sleep_time)

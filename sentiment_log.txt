@@ -856,3 +856,612 @@ Recent Headlines:
 - Bitcoin To Hit $150,000 By October, Says DYDX's Charles d'Haussy
 - Bitcoin Dips Slightly as US Economy Shrinks
 --------------------------------------------------
+
+2025-04-30 22:53:14 - Sentiment Score: -0.581
+Recent Headlines:
+- Trump’s Crypto Advisor Says There’s A ‘Space Race’ to Build a Bitcoin Reserve
+- Grayscale launches Bitcoin adopters exchange-traded fund
+- Bitcoin drops under $93K after US GDP data shows shrinking economy, raising recession alarms
+- Bitcoin Raging Bull Indicator Turns Back On, But This Level Holds The Key
+- Coinbase ups Bitcoin-backed USDC loan limit to $1 million after seeing $130 million in originations this year
+--------------------------------------------------
+
+2025-04-30 23:03:41 - Sentiment Score: -0.691
+Recent Headlines:
+- The Daily: Arthur Hayes doubles down on $1 million bitcoin call, FIFA to launch EVM-compatible blockchain and more
+- ZachXBT tracks $330M Bitcoin stolen in social engineering scam from elderly American
+- Semler Scientific Adds 165 BTC, Now Holds Over $330 Million in Bitcoin
+- ZachXBT Reveals Identity of $330 Million Bitcoin Theft Victim in US
+- Ex-Binance CEO chides Europe over crypto adoption
+--------------------------------------------------
+
+2025-04-30 23:14:08 - Sentiment Score: -0.670
+Recent Headlines:
+- Bitcoin Pepe Raises $6.3M to Disrupt Meme Coin Space
+- The Daily: Arthur Hayes doubles down on $1 million bitcoin call, FIFA to launch EVM-compatible blockchain and more
+- El Salvador Bets Big On Bitcoin, Still Buying Despite IMF Ban
+- ZachXBT tracks $330M Bitcoin stolen in social engineering scam from elderly American
+- Semler Scientific Adds 165 BTC, Now Holds Over $330 Million in Bitcoin
+--------------------------------------------------
+
+2025-04-30 23:24:34 - Sentiment Score: -0.602
+Recent Headlines:
+- US Recession 'Turning Into a Tailwind' for Bitcoin: Bitwise Analyst
+- Bitcoin Pepe Raises $6.3M to Disrupt Meme Coin Space
+- Bitcoin Betters Stocks In Uncertain World, Says Xapo Bank CEO: 'Nobody Can Print More Of It'
+- The Daily: Arthur Hayes doubles down on $1 million bitcoin call, FIFA to launch EVM-compatible blockchain and more
+- El Salvador Bets Big On Bitcoin, Still Buying Despite IMF Ban
+--------------------------------------------------
+
+2025-04-30 23:35:01 - Sentiment Score: -0.619
+Recent Headlines:
+- Bitcoin’s Realized Capitalization Hits All-Time High—What It Means for Price
+- Fidelity Says Bitcoin Still Undervalued — Even as Rate Cut Hopes Rise
+- Bitcoin Slips to $93,000 as U.S. GDP Decline Stokes Recession Fears
+- Bitcoin selling at $95K is ‘profit-taking pressure test’ but BTC whales are still buying
+- US Recession 'Turning Into a Tailwind' for Bitcoin: Bitwise Analyst
+--------------------------------------------------
+
+2025-04-30 23:45:28 - Sentiment Score: -0.619
+Recent Headlines:
+- Wells Fargo, Morgan Stanley, Merrill Lynch and UBS Will Open Bitcoin ETF Services by End of Year: Bitwise CIO Matt Hougan
+- Bitcoin’s Realized Capitalization Hits All-Time High—What It Means for Price
+- Grayscale launches Bitcoin Adopters ETF targeting firms holding BTC as treasury reserve
+- Fidelity Says Bitcoin Still Undervalued — Even as Rate Cut Hopes Rise
+- Bitcoin Slips to $93,000 as U.S. GDP Decline Stokes Recession Fears
+--------------------------------------------------
+
+2025-04-30 23:55:55 - Sentiment Score: -0.619
+Recent Headlines:
+- Wells Fargo, Morgan Stanley, Merrill Lynch and UBS Will Open Bitcoin ETF Services by End of Year: Bitwise CIO Matt Hougan
+- Bitcoin’s Realized Capitalization Hits All-Time High—What It Means for Price
+- Grayscale launches Bitcoin Adopters ETF targeting firms holding BTC as treasury reserve
+- Fidelity Says Bitcoin Still Undervalued — Even as Rate Cut Hopes Rise
+- Bitcoin Slips to $93,000 as U.S. GDP Decline Stokes Recession Fears
+--------------------------------------------------
+
+2025-05-01 00:06:23 - Sentiment Score: -0.619
+Recent Headlines:
+- James Howells: An Entertainment Company Secures Exclusive Rights to Adapt the Story of the British Man’s $800 Million Bitcoin Loss
+- Wells Fargo, Morgan Stanley, Merrill Lynch and UBS Will Open Bitcoin ETF Services by End of Year: Bitwise CIO Matt Hougan
+- Bitcoin’s Realized Capitalization Hits All-Time High—What It Means for Price
+- Grayscale launches Bitcoin Adopters ETF targeting firms holding BTC as treasury reserve
+- Fidelity Says Bitcoin Still Undervalued — Even as Rate Cut Hopes Rise
+--------------------------------------------------
+
+2025-05-01 00:16:50 - Sentiment Score: -0.718
+Recent Headlines:
+- Story of Man Who Lost $750 Million Worth of Bitcoin in Landfill Headed to Hollywood
+- Here’s When ‘The Real Altseason’ Everyone’s Been Waiting for Will Kick Off, According to Crypto Analyst
+- Bitcoin Price Analysis: Sucker’s Rally or Major Boom Ahead?
+- James Howells: An Entertainment Company Secures Exclusive Rights to Adapt the Story of the British Man’s $800 Million Bitcoin Loss
+- Price predictions 4/30: BTC, ETH, XRP, BNB, SOL, DOGE, ADA, SUI, LINK, AVAX
+--------------------------------------------------
+
+2025-05-01 00:27:17 - Sentiment Score: -0.718
+Recent Headlines:
+- Story of Man Who Lost $750 Million Worth of Bitcoin in Landfill Headed to Hollywood
+- Here’s When ‘The Real Altseason’ Everyone’s Been Waiting for Will Kick Off, According to Crypto Analyst
+- Bitcoin Price Analysis: Sucker’s Rally or Major Boom Ahead?
+- James Howells: An Entertainment Company Secures Exclusive Rights to Adapt the Story of the British Man’s $800 Million Bitcoin Loss
+- Price predictions 4/30: BTC, ETH, XRP, BNB, SOL, DOGE, ADA, SUI, LINK, AVAX
+--------------------------------------------------
+
+2025-05-01 00:37:42 - Sentiment Score: -0.655
+Recent Headlines:
+- $BTC So far pretty in line with the other corrections this cycle in terms of price action.
+
+Broke down, made a higher low and now trading back in the local range.
+
+There's always a reasoning or thesis as to why this has happened but one could also argue that it's just the market
+- UK unveils new crypto rules, aligns with U.S. in regulatory overhaul
+- Bitcoin Accumulation Trend Score Nears Peak, Signaling Strong Whale Activity
+- Story of Man Who Lost $750 Million Worth of Bitcoin in Landfill Headed to Hollywood
+- Here’s When ‘The Real Altseason’ Everyone’s Been Waiting for Will Kick Off, According to Crypto Analyst
+--------------------------------------------------
+
+2025-05-01 00:48:09 - Sentiment Score: -0.658
+Recent Headlines:
+- ‘Elderly’ American Allegedly Loses 3,520 BTC in Sophisticated Crypto Heist, Says ZachXBT
+- Running smart contracts on Bitcoin with Tap Protocol Q&A with Head of Marketing Neil Fitzhugh
+- Coinbase Raises Bitcoin-Backed USDC Loan Limit to $1 Million, Excluding New York, After $130 Million in Originations
+- $BTC So far pretty in line with the other corrections this cycle in terms of price action.
+
+Broke down, made a higher low and now trading back in the local range.
+
+There's always a reasoning or thesis as to why this has happened but one could also argue that it's just the market
+- UK unveils new crypto rules, aligns with U.S. in regulatory overhaul
+--------------------------------------------------
+
+2025-05-01 00:58:37 - Sentiment Score: -0.770
+Recent Headlines:
+- President Trump Advances Bitcoin Reserve Strategy
+- Bitcoin is finally starting to do what it promised – replacing gold
+- ‘Elderly’ American Allegedly Loses 3,520 BTC in Sophisticated Crypto Heist, Says ZachXBT
+- Running smart contracts on Bitcoin with Tap Protocol Q&A with Head of Marketing Neil Fitzhugh
+- Coinbase Raises Bitcoin-Backed USDC Loan Limit to $1 Million, Excluding New York, After $130 Million in Originations
+--------------------------------------------------
+
+2025-05-01 01:09:12 - Sentiment Score: -0.783
+Recent Headlines:
+- Barry Silbert on crypto’s evolution and why Bittensor may be the next Bitcoin
+- Bitcoin Supply on Exchanges Hits 5-Year Low – So Why Isn’t Price Soaring?
+- President Trump Advances Bitcoin Reserve Strategy
+- Bitcoin is finally starting to do what it promised – replacing gold
+- ‘Elderly’ American Allegedly Loses 3,520 BTC in Sophisticated Crypto Heist, Says ZachXBT
+--------------------------------------------------
+
+2025-05-01 01:19:55 - Sentiment Score: -0.783
+Recent Headlines:
+- Barry Silbert on crypto’s evolution and why Bittensor may be the next Bitcoin
+- Bitcoin Supply on Exchanges Hits 5-Year Low – So Why Isn’t Price Soaring?
+- Bitcoin, Ethereum, XRP, Dogecoin Slide Into Red As Q1 GDP Slides Into Contraction
+- President Trump Advances Bitcoin Reserve Strategy
+- Bitcoin is finally starting to do what it promised – replacing gold
+--------------------------------------------------
+
+2025-05-01 01:30:25 - Sentiment Score: -0.742
+Recent Headlines:
+- Crypto-linked stocks rally while the S&P 500 falls 2.5%
+- Barry Silbert on crypto’s evolution and why Bittensor may be the next Bitcoin
+- Bitcoin Supply on Exchanges Hits 5-Year Low – So Why Isn’t Price Soaring?
+- Bitcoin, Ethereum, XRP, Dogecoin Slide Into Red As Q1 GDP Slides Into Contraction
+
+2025-05-01 01:40:51 - Sentiment Score: -0.742
+Recent Headlines:
+- North Carolina House Passes House Bill 92 to Establish Strategic Bitcoin Reserve Led by Speaker Destin Hall
+- Recent Bitcoin Rally Showing ‘Durability,’ According to Glassnode – Here’s What the Analytic Firm Means
+- Crypto-linked stocks rally while the S&P 500 falls 2.5%
+- Barry Silbert on crypto’s evolution and why Bittensor may be the next Bitcoin
+- Bitcoin Supply on Exchanges Hits 5-Year Low – So Why Isn’t Price Soaring?
+--------------------------------------------------
+
+2025-05-01 01:51:17 - Sentiment Score: -0.742
+Recent Headlines:
+- Bitcoin Could Skyrocket 6x Again If History Repeats
+- North Carolina House Passes House Bill 92 to Establish Strategic Bitcoin Reserve Led by Speaker Destin Hall
+- Recent Bitcoin Rally Showing ‘Durability,’ According to Glassnode – Here’s What the Analytic Firm Means
+- Crypto-linked stocks rally while the S&P 500 falls 2.5%
+- Barry Silbert on crypto’s evolution and why Bittensor may be the next Bitcoin
+--------------------------------------------------
+
+2025-05-01 02:01:43 - Sentiment Score: -0.740
+Recent Headlines:
+- Bitcoin ‘aging’ chart projects sixfold BTC price rally above $350K
+- Bitcoin Could Skyrocket 6x Again If History Repeats
+- North Carolina House Passes House Bill 92 to Establish Strategic Bitcoin Reserve Led by Speaker Destin Hall
+- Recent Bitcoin Rally Showing ‘Durability,’ According to Glassnode – Here’s What the Analytic Firm Means
+- Crypto-linked stocks rally while the S&P 500 falls 2.5%
+--------------------------------------------------
+
+2025-05-01 02:12:09 - Sentiment Score: -0.699
+Recent Headlines:
+- Crypto Rebounds From Early Declines Alongside Reversal in U.S. Stocks
+- Trillion-Dollar Idea from Michael Saylor: Bitcoin Arbitrage Mastery
+- 2025 To 2027 Bitcoin Bull Run!
+- Bitcoin ‘aging’ chart projects sixfold BTC price rally above $350K
+- Bitcoin Could Skyrocket 6x Again If History Repeats
+--------------------------------------------------
+
+2025-05-01 02:22:34 - Sentiment Score: -0.726
+Recent Headlines:
+- Crypto Market Today: Top Trends Driving BTC, ETH, XRP & DOGE Prices
+- Bo Hines Declares US “Bitcoin Superpower” as Trump’s BTC Reserve Takes Shape
+- Phoenix Group Boosts Ethiopia Bitcoin Mining Capacity to 132 MW
+- Crypto Rebounds From Early Declines Alongside Reversal in U.S. Stocks
+- Trillion-Dollar Idea from Michael Saylor: Bitcoin Arbitrage Mastery
+--------------------------------------------------
+
+2025-05-01 02:33:00 - Sentiment Score: -0.726
+Recent Headlines:
+- Crypto Market Today: Top Trends Driving BTC, ETH, XRP & DOGE Prices
+- Bo Hines Declares US “Bitcoin Superpower” as Trump’s BTC Reserve Takes Shape
+- Phoenix Group Boosts Ethiopia Bitcoin Mining Capacity to 132 MW
+- Crypto Rebounds From Early Declines Alongside Reversal in U.S. Stocks
+- Trillion-Dollar Idea from Michael Saylor: Bitcoin Arbitrage Mastery
+--------------------------------------------------
+
+2025-05-01 02:43:27 - Sentiment Score: -0.804
+Recent Headlines:
+- North Carolina House Passes House Bill 92 with 71-44 Vote, Allowing 5% of Funds into Bitcoin Reserve
+- BTC dominance hits 64% in 2025 – Are altcoins stuck in Bitcoin’s shadow?
+- Semler Scientific is back with fresh $15.7M, 165 BTC purchase, BTC Yield at 23.8% YTD
+- Crypto Market Today: Top Trends Driving BTC, ETH, XRP & DOGE Prices
+- Bo Hines Declares US “Bitcoin Superpower” as Trump’s BTC Reserve Takes Shape
+--------------------------------------------------
+
+2025-05-01 02:53:55 - Sentiment Score: -0.712
+Recent Headlines:
+- Crypto markets show resilience in April 2025 amid global turmoil and US trade shockwaves
+- North Carolina House Passes House Bill 92 with 71-44 Vote, Allowing 5% of Funds into Bitcoin Reserve
+- BTC dominance hits 64% in 2025 – Are altcoins stuck in Bitcoin’s shadow?
+- Ex-Economic Hitman: Bitcoin & the END of Dollar Imperialism? | The Culture Bit feat. John Perkins
+- CIA Says Bitcoin Is A Tool They Use
+--------------------------------------------------
+
+2025-05-01 03:04:22 - Sentiment Score: -0.722
+Recent Headlines:
+- Ethereum CrossX Indicators Flashes Buy As Insitution Accumulates, Analyst Says Brace For $4,000
+- Crypto markets show resilience in April 2025 amid global turmoil and US trade shockwaves
+- North Carolina House Passes House Bill 92 with 71-44 Vote, Allowing 5% of Funds into Bitcoin Reserve
+- BTC dominance hits 64% in 2025 – Are altcoins stuck in Bitcoin’s shadow?
+- Ex-Economic Hitman: Bitcoin & the END of Dollar Imperialism? | The Culture Bit feat. John Perkins
+--------------------------------------------------
+
+2025-05-01 03:14:50 - Sentiment Score: -0.763
+Recent Headlines:
+- LA Company Secures Rights to British James Howells’ $750M Bitcoin Story From Docksway Landfill With Global Campaign
+- sBTC Withdrawals Now Live on Bitcoin Mainnet via Stacks, Permissionless Conversion to BTC; Deposits Reopening Soon
+- Ethereum CrossX Indicators Flashes Buy As Insitution Accumulates, Analyst Says Brace For $4,000
+- Crypto markets show resilience in April 2025 amid global turmoil and US trade shockwaves
+- North Carolina House Passes House Bill 92 with 71-44 Vote, Allowing 5% of Funds into Bitcoin Reserve
+--------------------------------------------------
+
+2025-05-01 03:25:18 - Sentiment Score: -0.734
+Recent Headlines:
+- Publicly Traded Semler Scientific Buys Millions More in Bitcoin
+- U.S. Aims to Dominate Bitcoin Frontier in Global Digital Race
+- sBTC Withdrawals Now Live on Bitcoin Mainnet via Stacks, Permissionless Conversion to BTC; Deposits Reopening Soon
+- LA Company Secures Rights to British James Howells’ $750M Bitcoin Story From Docksway Landfill With Global Campaign
+- Ethereum CrossX Indicators Flashes Buy As Insitution Accumulates, Analyst Says Brace For $4,000
+--------------------------------------------------
+
+2025-05-01 03:35:46 - Sentiment Score: -0.685
+Recent Headlines:
+- Worldcoin Price Forecast: Can WLD Price Regain $2 In April?
+- Bitcoin rebounds from bearish US GDP data as dip buyers push BTC price back toward $95K
+- Publicly Traded Semler Scientific Buys Millions More in Bitcoin
+- U.S. Aims to Dominate Bitcoin Frontier in Global Digital Race
+- LA Company Secures Rights to British James Howells’ $750M Bitcoin Story From Docksway Landfill With Global Campaign
+--------------------------------------------------
+
+2025-05-01 03:46:14 - Sentiment Score: -0.685
+Recent Headlines:
+- Worldcoin Price Forecast: Can WLD Price Regain $2 In April?
+- Bitcoin rebounds from bearish US GDP data as dip buyers push BTC price back toward $95K
+- Publicly Traded Semler Scientific Buys Millions More in Bitcoin
+- U.S. Aims to Dominate Bitcoin Frontier in Global Digital Race
+- What To Expect From Bitcoin (BTC) Price In May 2025
+--------------------------------------------------
+
+2025-05-01 03:56:42 - Sentiment Score: -0.688
+Recent Headlines:
+- Europe Is Missing Out as Nations Build Bitcoin Reserves – Changpeng Zhao
+- Bitwise’s Matt Hougan predicts Merrill Lynch, Morgan Stanley, Wells Fargo and UBS will enter Bitcoin this year
+- Worldcoin Price Forecast: Can WLD Price Regain $2 In April?
+- Bitcoin rebounds from bearish US GDP data as dip buyers push BTC price back toward $95K
+- Publicly Traded Semler Scientific Buys Millions More in Bitcoin
+--------------------------------------------------
+
+2025-05-01 04:07:09 - Sentiment Score: -0.642
+Recent Headlines:
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+- Europe Is Missing Out as Nations Build Bitcoin Reserves – Changpeng Zhao
+- Bitwise’s Matt Hougan predicts Merrill Lynch, Morgan Stanley, Wells Fargo and UBS will enter Bitcoin this year
+- Worldcoin Price Forecast: Can WLD Price Regain $2 In April?
+--------------------------------------------------
+
+2025-05-01 04:17:37 - Sentiment Score: -0.592
+Recent Headlines:
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+- Europe Is Missing Out as Nations Build Bitcoin Reserves – Changpeng Zhao
+- Bitwise’s Matt Hougan predicts Merrill Lynch, Morgan Stanley, Wells Fargo and UBS will enter Bitcoin this year
+--------------------------------------------------
+
+2025-05-01 04:28:05 - Sentiment Score: -0.592
+Recent Headlines:
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+- Europe Is Missing Out as Nations Build Bitcoin Reserves – Changpeng Zhao
+- Bitwise’s Matt Hougan predicts Merrill Lynch, Morgan Stanley, Wells Fargo and UBS will enter Bitcoin this year
+--------------------------------------------------
+
+2025-05-01 04:38:35 - Sentiment Score: -0.592
+Recent Headlines:
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+- Europe Is Missing Out as Nations Build Bitcoin Reserves – Changpeng Zhao
+- Bitwise’s Matt Hougan predicts Merrill Lynch, Morgan Stanley, Wells Fargo and UBS will enter Bitcoin this year
+--------------------------------------------------
+
+2025-05-01 04:49:03 - Sentiment Score: -0.626
+Recent Headlines:
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- US GDP Report Fuels Recession Concerns, But Bitcoin Holds Steady
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+- Europe Is Missing Out as Nations Build Bitcoin Reserves – Changpeng Zhao
+--------------------------------------------------
+
+2025-05-01 04:59:31 - Sentiment Score: -0.626
+Recent Headlines:
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- US GDP Report Fuels Recession Concerns, But Bitcoin Holds Steady
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+- Europe Is Missing Out as Nations Build Bitcoin Reserves – Changpeng Zhao
+--------------------------------------------------
+
+2025-05-01 05:10:00 - Sentiment Score: -0.576
+Recent Headlines:
+- Coinbase Expands $1M Bitcoin-Backed Loans Nationwide—Global Launch Next
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- US GDP Report Fuels Recession Concerns, But Bitcoin Holds Steady
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+--------------------------------------------------
+
+2025-05-01 05:20:28 - Sentiment Score: -0.576
+Recent Headlines:
+- Coinbase Expands $1M Bitcoin-Backed Loans Nationwide—Global Launch Next
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- US GDP Report Fuels Recession Concerns, But Bitcoin Holds Steady
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+--------------------------------------------------
+
+2025-05-01 05:30:57 - Sentiment Score: -0.576
+Recent Headlines:
+- Coinbase Expands $1M Bitcoin-Backed Loans Nationwide—Global Launch Next
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- US GDP Report Fuels Recession Concerns, But Bitcoin Holds Steady
+- Investors increase crypto allocations to yearly highs, Bitcoin leads the accumulation
+- White House Says The Bitcoin Space Race Has Begun!
+--------------------------------------------------
+
+2025-05-01 05:41:25 - Sentiment Score: -0.513
+Recent Headlines:
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+- Bitcoin short term realized volatility drops to 16% after early April spike
+- Coinbase Expands $1M Bitcoin-Backed Loans Nationwide—Global Launch Next
+- North Carolina Approves Bill to Create Strategic Bitcoin Reserve Fund
+- US GDP Report Fuels Recession Concerns, But Bitcoin Holds Steady
+--------------------------------------------------
+
+2025-05-01 05:51:53 - Sentiment Score: -0.563
+Recent Headlines:
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+- Bitcoin to $1 Million?! Max Keiser's Bold Prediction!
+- Bitcoin short term realized volatility drops to 16% after early April spike
+- Coinbase Expands $1M Bitcoin-Backed Loans Nationwide—Global Launch Next
+- What To Expect From Hedera (HBAR) In May 2025
+--------------------------------------------------
+
+2025-05-01 06:02:22 - Sentiment Score: -0.563
+Recent Headlines:
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+- Bitcoin to $1 Million?! Max Keiser's Bold Prediction!
+- Bitcoin short term realized volatility drops to 16% after early April spike
+- Coinbase Expands $1M Bitcoin-Backed Loans Nationwide—Global Launch Next
+- What To Expect From Hedera (HBAR) In May 2025
+--------------------------------------------------
+
+2025-05-01 06:12:51 - Sentiment Score: -0.563
+Recent Headlines:
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+- Bitcoin to $1 Million?! Max Keiser's Bold Prediction!
+- Bitcoin short term realized volatility drops to 16% after early April spike
+--------------------------------------------------
+
+2025-05-01 06:23:19 - Sentiment Score: -0.563
+Recent Headlines:
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+- Bitcoin to $1 Million?! Max Keiser's Bold Prediction!
+--------------------------------------------------
+
+2025-05-01 06:33:47 - Sentiment Score: -0.563
+Recent Headlines:
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+- Bitcoin to $1 Million?! Max Keiser's Bold Prediction!
+--------------------------------------------------
+
+2025-05-01 06:44:15 - Sentiment Score: -0.563
+Recent Headlines:
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+- Bitcoin to $1 Million?! Max Keiser's Bold Prediction!
+--------------------------------------------------
+
+2025-05-01 06:54:43 - Sentiment Score: -0.563
+Recent Headlines:
+- Bitcoin: Here Is the Next Key Target According to Important Indicator
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+- Can Bitcoin (BTC) Reach $100,000 Now? Solana's (SOL) Coming Back to Fundamentals, Dogecoin (DOGE): Ready to Skyrocket Long Term
+--------------------------------------------------
+
+2025-05-01 07:05:12 - Sentiment Score: -0.543
+Recent Headlines:
+- BTC Price Path To $155k As New Highs Look Imminent
+- Bitcoin: Here Is the Next Key Target According to Important Indicator
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+--------------------------------------------------
+
+2025-05-01 07:15:40 - Sentiment Score: -0.543
+Recent Headlines:
+- BTC Price Path To $155k As New Highs Look Imminent
+- Bitcoin: Here Is the Next Key Target According to Important Indicator
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+--------------------------------------------------
+
+2025-05-01 07:26:08 - Sentiment Score: -0.543
+Recent Headlines:
+- BTC Price Path To $155k As New Highs Look Imminent
+- Bitcoin: Here Is the Next Key Target According to Important Indicator
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+- Robert Kiyosaki Warns Global Panic Is Spreading, the Crash Is Just Beginning
+--------------------------------------------------
+
+2025-05-01 07:36:37 - Sentiment Score: -0.543
+Recent Headlines:
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+- BTC Price Path To $155k As New Highs Look Imminent
+- Bitcoin: Here Is the Next Key Target According to Important Indicator
+- What’s Next for Bitcoin Price as BlackRock Moves to Launch $150B Fund?
+- Big Four Wirehouses Set to Unlock Bitcoin ETFs for Millions of Investors
+--------------------------------------------------
+
+2025-05-01 07:47:05 - Sentiment Score: -0.643
+Recent Headlines:
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+- UK Proposes First Full Crypto Rules With Eye on U.S. Collaboration
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+- BTC Price Path To $155k As New Highs Look Imminent
+--------------------------------------------------
+
+2025-05-01 07:57:34 - Sentiment Score: -0.607
+Recent Headlines:
+- Bitcoin Price Rally Incoming? Bulls Target $95K and Beyond
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+- UK Proposes First Full Crypto Rules With Eye on U.S. Collaboration
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+--------------------------------------------------
+
+2025-05-01 08:08:02 - Sentiment Score: -0.604
+Recent Headlines:
+- Metaplanet to Establish US Subsidiary, Seeks $250M to Boost Bitcoin Strategy
+- Bitcoin Price Rally Incoming? Bulls Target $95K and Beyond
+- Robinhood Crypto Revenue Surges 232% Amid Retail Revival
+- Bitcoin Seoul 2025 to Host Global Industry Leaders for Asia’s Largest Bitcoin-Focused Conference
+- UK Proposes First Full Crypto Rules With Eye on U.S. Collaboration
+--------------------------------------------------
+
+2025-05-01 08:18:30 - Sentiment Score: -0.623
+Recent Headlines:
+- Crypto news today: Bitcoin holds $94K despite volatility; analyst warns market ignores risks
+- Bitcoin, Ethereum Muted, Dogecoin Dips After Q1 GDP Contraction: Analyst Foresees BTC's Rally To $114,000 If It Breaks This Ceiling
+- Metaplanet to Establish US Subsidiary, Seeks $250M to Boost Bitcoin Strategy
+- Bitcoin Price Rally Incoming? Bulls Target $95K and Beyond
+- Robinhood Crypto Revenue Surges 232% Amid Retail Revival
+--------------------------------------------------
+
+2025-05-01 08:29:00 - Sentiment Score: -0.614
+Recent Headlines:
+- Japan's Metaplanet Launches Florida-Based US Subsidiary With $250 Million, Stock Up 5% to Expand Bitcoin Treasury
+- Crypto news today: Bitcoin holds $94K despite volatility; analyst warns market ignores risks
+- Bitcoin, Ethereum Muted, Dogecoin Dips After Q1 GDP Contraction: Analyst Foresees BTC's Rally To $114,000 If It Breaks This Ceiling
+- Metaplanet to Establish US Subsidiary, Seeks $250M to Boost Bitcoin Strategy
+- Bitcoin Price Rally Incoming? Bulls Target $95K and Beyond
+--------------------------------------------------
+
+2025-05-01 08:39:28 - Sentiment Score: -0.564
+Recent Headlines:
+- Semler Scientific Expands Bitcoin Holdings with $15.7M Buy
+- Whales & ETFs fuel Bitcoin surge: $3.02B inflows spark $106K price breakout hopes
+- Japan's Metaplanet Launches Florida-Based US Subsidiary With $250 Million, Stock Up 5% to Expand Bitcoin Treasury
+- Crypto news today: Bitcoin holds $94K despite volatility; analyst warns market ignores risks
+- Bitcoin, Ethereum Muted, Dogecoin Dips After Q1 GDP Contraction: Analyst Foresees BTC's Rally To $114,000 If It Breaks This Ceiling
+--------------------------------------------------
+
+2025-05-01 08:49:56 - Sentiment Score: -0.578
+Recent Headlines:
+- Ethereum Price Nears Launch Point — Can It Break Free This Time?
+- Semler Scientific Expands Bitcoin Holdings with $15.7M Buy
+- Whales & ETFs fuel Bitcoin surge: $3.02B inflows spark $106K price breakout hopes
+- Japan's Metaplanet Launches Florida-Based US Subsidiary With $250 Million, Stock Up 5% to Expand Bitcoin Treasury
+- Crypto news today: Bitcoin holds $94K despite volatility; analyst warns market ignores risks
+--------------------------------------------------
+
+2025-05-01 09:00:25 - Sentiment Score: -0.478
+Recent Headlines:
+- Robinhood's 30% Crypto Revenue Plunge: Vlad Tenev Looking To Diversify, Wants Platform 'Less Reliant' On Transaction Volumes
+- Ethereum Price Nears Launch Point — Can It Break Free This Time?
+- Semler Scientific Expands Bitcoin Holdings with $15.7M Buy
+- Whales & ETFs fuel Bitcoin surge: $3.02B inflows spark $106K price breakout hopes
+- Japan's Metaplanet Launches Florida-Based US Subsidiary With $250 Million, Stock Up 5% to Expand Bitcoin Treasury
+--------------------------------------------------
+
+2025-05-01 09:10:54 - Sentiment Score: -0.528
+Recent Headlines:
+- El Salvador Committed to Buying Bitcoin Despite IMF Deal, Minister Says
+- Robinhood's 30% Crypto Revenue Plunge: Vlad Tenev Looking To Diversify, Wants Platform 'Less Reliant' On Transaction Volumes
+- Ethereum Price Nears Launch Point — Can It Break Free This Time?
+- Semler Scientific Expands Bitcoin Holdings with $15.7M Buy
+- Whales & ETFs fuel Bitcoin surge: $3.02B inflows spark $106K price breakout hopes
+--------------------------------------------------
+
+2025-05-01 09:21:23 - Sentiment Score: -0.527
+Recent Headlines:
+- Pi Coin Price Prediction: Is $1.70 Coming After 7% Rise?
+- El Salvador Committed to Buying Bitcoin Despite IMF Deal, Minister Says
+- Robinhood's 30% Crypto Revenue Plunge: Vlad Tenev Looking To Diversify, Wants Platform 'Less Reliant' On Transaction Volumes
+- Ethereum Price Nears Launch Point — Can It Break Free This Time?
+- Semler Scientific Expands Bitcoin Holdings with $15.7M Buy
+--------------------------------------------------
+
+2025-05-01 10:39:57 - Sentiment Score: -0.577
+Recent Headlines:
+- North Carolina Passes Bill To Integrate Bitcoin Into $127 Billion Pension Fund
+- Metaplanet launches Florida subsidiary to supercharge $250M Bitcoin treasury strategy
+- US Could Buy $100 Billion In Bitcoin This Year: Coinbase Exec
+- Bitcoin's Future: Banks, Credit Lines, and Market Cap!
+- Pi Coin Price Prediction: Is $1.70 Coming After 7% Rise?
+--------------------------------------------------
+
+2025-05-01 10:41:56 - Sentiment Score: -0.577
+Recent Headlines:
+- North Carolina Passes Bill To Integrate Bitcoin Into $127 Billion Pension Fund
+- Metaplanet launches Florida subsidiary to supercharge $250M Bitcoin treasury strategy
+- El Salvador Committed To Buy Bitcoin Despite IMF Requirement, Says Minister— 'Important Project' Started By Nayib Bukele
+- US Could Buy $100 Billion In Bitcoin This Year: Coinbase Exec
+- Bitcoin's Future: Banks, Credit Lines, and Market Cap!
+--------------------------------------------------
+
+2025-05-01 10:52:27 - Sentiment Score: -0.577
+Recent Headlines:
+- North Carolina Passes Bill To Integrate Bitcoin Into $127 Billion Pension Fund
+- Metaplanet launches Florida subsidiary to supercharge $250M Bitcoin treasury strategy
+- El Salvador Committed To Buy Bitcoin Despite IMF Requirement, Says Minister— 'Important Project' Started By Nayib Bukele
+- US Could Buy $100 Billion In Bitcoin This Year: Coinbase Exec
+- Bitcoin's Future: Banks, Credit Lines, and Market Cap!
+--------------------------------------------------
+
+2025-05-01 10:59:19 - Sentiment Score: -0.577
+Recent Headlines:
+- Bitcoin Is Flying Off Exchanges, So Why Isn’t Price Going Up?
+- Cardano ADA Lace Wallet Just Integrated BTC: ADA Price Prediction For May 2025?
+- North Carolina Passes Bill To Integrate Bitcoin Into $127 Billion Pension Fund
+- Metaplanet launches Florida subsidiary to supercharge $250M Bitcoin treasury strategy
+- El Salvador Committed To Buy Bitcoin Despite IMF Requirement, Says Minister— 'Important Project' Started By Nayib Bukele
+--------------------------------------------------
+
+2025-05-01 11:09:50 - Sentiment Score: -0.563
+Recent Headlines:
+- Pro-XRP Lawyer John Deaton: ‘Why Isn’t Everyone Bullish on XRP?’
+- Dogecoin (DOGE) Fights to Stay Afloat — Major Hurdles Remain
+- Bitcoin DeFi will have 300M users, beating Ethereum and Solana: Exec
+- Bitcoin Is Flying Off Exchanges, So Why Isn’t Price Going Up?
+- Cardano ADA Lace Wallet Just Integrated BTC: ADA Price Prediction For May 2025?
+--------------------------------------------------
+
+2025-05-01 11:20:20 - Sentiment Score: -0.613
+Recent Headlines:
+- BlackRock And MicroStrategy Are Racing To 1 Million Bitcoin: Who Will Get There First?
+- Pro-XRP Lawyer John Deaton: ‘Why Isn’t Everyone Bullish on XRP?’
+- Dogecoin (DOGE) Fights to Stay Afloat — Major Hurdles Remain
+- Bitcoin DeFi will have 300M users, beating Ethereum and Solana: Exec
+- Bitcoin Is Flying Off Exchanges, So Why Isn’t Price Going Up?
+--------------------------------------------------
