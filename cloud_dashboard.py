@@ -6,17 +6,40 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 from db_helper import DatabaseHelper
-from bot import check_secondary_boosters, calculate_obv, calculate_keltner_channel, fetch_15m_ema, calculate_pivot_levels, is_strong_candle
+from bot import (
+    calculate_vwap, calculate_supertrend,
+    calculate_atr, calculate_obv, calculate_keltner_channel,
+    calculate_pivot_levels, is_strong_candle, fetch_15m_ema,
+    check_secondary_boosters
+)
 
 # Streamlit page config
 st.set_page_config(
-    page_title="Crypto Trading Bot Dashboard",
-    page_icon="📈",
-    layout="wide"
+    page_title="Crypto Trading Dashboard",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# Add custom CSS for better mobile view
+st.markdown("""
+    <style>
+    .stMetric {
+        background-color: #f0f2f6;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    @media (max-width: 768px) {
+        .stMetric {
+            margin-bottom: 5px;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Add password protection
 def check_password():
@@ -51,7 +74,7 @@ if not check_password():
     st.stop()
 
 # Dashboard title
-st.title("Crypto Trading Bot Dashboard")
+st.title("Crypto Trading Dashboard")
 
 # Create columns for key metrics
 col1, col2, col3, col4 = st.columns(4)
@@ -135,6 +158,12 @@ def main():
         
         # Mobile view toggle
         st.toggle('Mobile View', key='mobile_view')
+        
+        # Chart indicator toggles
+        st.subheader("Chart Indicators")
+        show_vwap = st.toggle('VWAP', value=True)
+        show_supertrend = st.toggle('SuperTrend', value=True)
+        show_volume = st.toggle('Volume', value=True)
 
     # Load and display data
     data = load_bot_data()
@@ -211,46 +240,35 @@ def main():
             else:
                 st.warning("Missing OHLC data for price chart.")
 
-            # Add Donchian Channels
-            if 'donchian_high' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['donchian_high'],
-                        name='Donchian High',
-                        line=dict(color='green', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-            if 'donchian_low' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['donchian_low'],
-                        name='Donchian Low',
-                        line=dict(color='red', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-            if 'donchian_mid' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['donchian_mid'],
-                        name='Donchian Mid',
-                        line=dict(color='gray', width=1)
-                    ),
-                    row=1, col=1
-                )
-
-            # Add VWAP
-            if 'vwap' in df.columns:
+            # Add VWAP if enabled
+            if show_vwap and 'vwap' in df.columns:
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
                         y=df['vwap'],
                         name='VWAP',
                         line=dict(color='purple', width=1)
+                    ),
+                    row=1, col=1
+                )
+
+            # Add SuperTrend if enabled
+            if show_supertrend and 'supertrend_upper' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['supertrend_upper'],
+                        name='SuperTrend Upper',
+                        line=dict(color='blue', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['supertrend_lower'],
+                        name='SuperTrend Lower',
+                        line=dict(color='blue', width=1, dash='dash')
                     ),
                     row=1, col=1
                 )
@@ -273,8 +291,8 @@ def main():
                         row=1, col=1
                     )
 
-            # Volume subplot with spike threshold
-            if 'volume' in df.columns:
+            # Volume subplot if enabled
+            if show_volume and 'volume' in df.columns:
                 fig.add_trace(
                     go.Bar(x=df['timestamp'], y=df['volume'], name='Volume'),
                     row=2, col=1
@@ -298,7 +316,14 @@ def main():
                 height=chart_height,
                 title_text="Trading Activity",
                 xaxis_rangeslider_visible=False,
-                margin=dict(l=10, r=10, t=30, b=10)
+                margin=dict(l=10, r=10, t=30, b=10),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                )
             )
 
             st.plotly_chart(fig, use_container_width=True)

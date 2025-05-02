@@ -162,13 +162,6 @@ def check_volume_spike(df):
     volume_ma = df['volume'].rolling(window=20).mean()
     return df['volume'].iloc[-1] > volume_ma.iloc[-1] * 1.05
 
-def calculate_donchian_channel(df, period=20):
-    """Calculate Donchian Channel"""
-    df['donchian_high'] = df['high'].rolling(window=period).max()
-    df['donchian_low'] = df['low'].rolling(window=period).min()
-    df['donchian_mid'] = (df['donchian_high'] + df['donchian_low']) / 2
-    return df['donchian_high'], df['donchian_low'], df['donchian_mid']
-
 def calculate_supertrend(df, period=10, multiplier=3):
     """Calculate SuperTrend indicator"""
     hl2 = (df['high'] + df['low']) / 2
@@ -213,7 +206,6 @@ def fetch_price_data():
         
         # Calculate indicators
         df['vwap'] = calculate_vwap(df)
-        df['donchian_high'], df['donchian_low'], df['donchian_mid'] = calculate_donchian_channel(df)
         df['supertrend'] = calculate_supertrend(df)
         df['atr'] = calculate_atr(df)
         
