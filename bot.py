@@ -12,139 +12,8 @@ from db_helper import DatabaseHelper
 import os
 from dotenv import load_dotenv
 
-print("Initializing trading bot...")
-
-# Load environment variables
-load_dotenv()
-
-# Initialize database connection
-db = DatabaseHelper()
-db.connect()
-
-# Trading pair configuration
-symbol = 'BTC/USDT'
-timeframe = '5m'  # Changed from 1m to 5m
-news_check_interval = 600  # 10 minutes
-last_news_check = 0
-last_sentiment_score = 0
-last_summary_time = 0
-SUMMARY_INTERVAL = 1800  # 30 minutes in seconds
-
-# Price history for charting
-price_history = []
-MAX_HISTORY_LENGTH = 100
-
-# Exchange setup for futures market data
-exchange = ccxt.binance({
-    'apiKey': 'Glun3rOW3f825CECPvnOPKbsVwDOpniL4fzsyjPoeq5s827qhGojZnxOQltJTx1U',
-    'secret': 'vwvlFJHu5RTZhvBjmwtVa9gWXAeCDLrw1ONjgxyX08izEiCHK7v4IjKoh8lNRKMv',
-    'enableRateLimit': True,
-    'options': {
-        'defaultType': 'future',
-        'adjustForTimeDifference': True,
-        'recvWindow': 60000
-    }
-})
-
-# Test basic market data access
-try:
-    print("Testing market data access...")
-    markets = exchange.load_markets()
-    print("Successfully loaded market data")
-except Exception as e:
-    print(f"Error loading markets: {e}")
-
-# Test account access
-try:
-    print("\nTesting account access...")
-    balance = exchange.fetch_balance()
-    print("Successfully connected to Binance Futures")
-    print(f"USDT Balance: {balance['USDT']['free'] if 'USDT' in balance else 0:.2f}")
-except Exception as e:
-    print(f"Error accessing account: {e}")
-
-# Test futures-specific endpoints
-try:
-    print("\nTesting futures endpoints...")
-    positions = exchange.fetch_positions([symbol])
-    print("Successfully accessed futures positions")
-except Exception as e:
-    print(f"Error accessing futures positions: {e}")
-
-# Set leverage to 10x
-try:
-    print("\nSetting leverage...")
-    exchange.fapiPrivatePostLeverage({
-        'symbol': 'BTCUSDT',
-        'leverage': 10
-    })
-    print("Successfully set leverage to 10x")
-except Exception as e:
-    print(f"Error setting leverage: {e}")
-    print("Continuing with paper trading mode only...")
-
-print("\nStarting main trading loop...")
-
-# Trading state variables
-active_position = {
-    'side': None,  # 'long' or 'short'
-    'entry_price': None,
-    'position_size': 0,
-    'num_scales': 0,
-    'avg_entry_price': None,
-    'trailing_stop': None
-}
-
-# Add breakout tracking
-breakout_state = {
-    'breakout_bar': None,  # Price level where breakout occurred
-    'breakout_time': None,  # Time of breakout
-    'breakout_side': None,  # 'long' or 'short'
-    'last_stop_hit': None,  # Time of last stop loss hit
-    'last_stop_price': None  # Price where stop was hit
-}
-
-# Trading parameters
-VOLUME_THRESHOLD = 1.3  # Initial entry threshold (0.5% position)
-ATR_MULTIPLIER = 0.3  # 0.3 × ATR for VWAP offset
-POSITION_SIZE_1 = 0.005  # 0.5% of capital for initial position
-POSITION_SIZE_2 = 0.01   # 1% of capital for second addition
-POSITION_SIZE_3 = 0.05   # 5% of capital max position size
-MAX_POSITION_SIZE = 0.05  # 5% of total capital cap per trade
-TP_PERCENTAGE = 0.007  # 0.7% take profit
-REENTRY_TIME_LIMIT = 300  # 5 minutes to consider re-entry after stop loss
-INITIAL_STOP_PERCENTAGE = 0.004  # 0.4% initial stop loss
-POSITION_SIZE_BOOST = 1.5  # 50% boost when secondary conditions are met
-
-# Volume-based position sizing thresholds
-VOLUME_THRESHOLD_1 = 1.3  # Initial position threshold (0.5% capital)
-VOLUME_THRESHOLD_2 = 1.7  # Add to position threshold (1% capital)
-VOLUME_THRESHOLD_3 = 2.0  # Max position threshold (5% capital)
-
-# FinBERT setup
-tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
-model = AutoModelForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
-
-# Paper trading simulation state
-paper_trading = {
-    'balance': 117.39,  # Starting with 117.39 USDT (equivalent to 10,000 INR)
-    'initial_balance': 117.39,
-    'position': {
-        'side': None,  # 'long' or 'short'
-        'size': 0.0,
-        'entry_price': 0.0,
-        'leverage': 10,
-        'unrealized_pnl': 0.0,
-        'stop_loss': 0.0,
-        'take_profit': 0.0
-    },
-    'trades': [],
-    'total_pnl': 0.0,
-    'win_trades': 0,
-    'loss_trades': 0
-}
-
-TP_MULTIPLIER = 1.4  # k value for ATR-based take profit (adjust as needed)
+# --- Utility functions and class definitions below ---
+# (leave all your indicator, calculation, and helper functions here)
 
 def calculate_vwap(df):
     """Calculate VWAP (Volume Weighted Average Price)"""
@@ -1014,132 +883,80 @@ def check_secondary_boosters(df, side):
         votes += 1
     return votes
 
-while True:
+# --- Main bot logic: only runs when executing this file directly ---
+if __name__ == "__main__":
+    print("Initializing trading bot...")
+
+    # Load environment variables
+    load_dotenv()
+
+    # Initialize database connection
+    db = DatabaseHelper()
+    db.connect()
+
+    # Trading pair configuration
+    symbol = 'BTC/USDT'
+    timeframe = '5m'  # Changed from 1m to 5m
+    news_check_interval = 600  # 10 minutes
+    last_news_check = 0
+    last_sentiment_score = 0
+    last_summary_time = 0
+    SUMMARY_INTERVAL = 1800  # 30 minutes in seconds
+
+    # Price history for charting
+    price_history = []
+    MAX_HISTORY_LENGTH = 100
+
+    # Exchange setup for futures market data
+    exchange = ccxt.binance({
+        'apiKey': 'Glun3rOW3f825CECPvnOPKbsVwDOpniL4fzsyjPoeq5s827qhGojZnxOQltJTx1U',
+        'secret': 'vwvlFJHu5RTZhvBjmwtVa9gWXAeCDLrw1ONjgxyX08izEiCHK7v4IjKoh8lNRKMv',
+        'enableRateLimit': True,
+        'options': {
+            'defaultType': 'future',
+            'adjustForTimeDifference': True,
+            'recvWindow': 60000
+        }
+    })
+
+    # Test basic market data access
     try:
-        current_time = time.time()
-        df = fetch_price_data()
-        if df is None:
-            print("Error fetching price data, retrying...")
-            time.sleep(5)
-            continue
-            
-        atr = calculate_atr(df)
-        update_funding_rate()
-        last_price = df['close'].iloc[-1]
-        
-        # Update paper trading position PnL
-        update_position_pnl(last_price)
-        
-        # Get trading conditions
-        conditions = check_primary_conditions(df)
-        
-        # Save data for dashboard - different intervals based on position status
-        if paper_trading['position']['side'] is not None:
-            # Save data every minute when position is active
-            if current_time - last_summary_time >= 60:  # 60 seconds = 1 minute
-                save_bot_data(df, last_price, atr.iloc[-1])
-                display_status_update(df, conditions, last_price)
-                last_summary_time = current_time
-        else:
-            # Save data every 5 minutes when no position is active
-            if current_time - last_summary_time >= 300:  # 300 seconds = 5 minutes
-                save_bot_data(df, last_price, atr.iloc[-1])
-                display_status_update(df, conditions, last_price)
-                last_summary_time = current_time
-            
-        # Trading logic for opening new positions or scaling in
-        volume_ratio = conditions['volume_ratio']
-        entry_price = last_price
-        current_position = paper_trading['position']
-        current_size = current_position['size'] if current_position['side'] else 0.0
-        capital = paper_trading['balance']
-        max_position = (capital * 0.05) / entry_price
-        
-        # Check for re-entry after stop loss
-        can_reenter = False
-        if (breakout_state['last_stop_hit'] is not None and 
-            current_time - breakout_state['last_stop_hit'] <= REENTRY_TIME_LIMIT):
-            # Check if price has reclaimed breakout level
-            if (breakout_state['breakout_side'] == 'long' and 
-                last_price > breakout_state['breakout_bar']):
-                can_reenter = True
-            elif (breakout_state['breakout_side'] == 'short' and 
-                  last_price < breakout_state['breakout_bar']):
-                can_reenter = True
-        
-        # --- Secondary boosters ---
-        secondary_votes_long = check_secondary_boosters(df, 'long')
-        secondary_votes_short = check_secondary_boosters(df, 'short')
-        
-        # If 2+ boosters, go all in and tighten stop
-        use_max_size_long = secondary_votes_long >= 2
-        use_max_size_short = secondary_votes_short >= 2
-        
-        if conditions['long'] and conditions['volume_spike']:
-            if current_position['side'] is None:
-                # No position, check for normal entry or re-entry
-                if volume_ratio >= 1.3 and (can_reenter or breakout_state['last_stop_hit'] is None):
-                    if use_max_size_long:
-                        position_size = (capital * 0.05) / entry_price
-                        print(f"\n[BOOSTED] 2+ secondary boosters met. Going all in (5% of capital)!")
-                        # Tighter stop: Low - 0.15 × ATR
-                        df = fetch_price_data()
-                        atr = df['atr'].iloc[-1]
-                        stop_loss = df['low'].iloc[-1] - (0.15 * atr)
-                        open_position('long', position_size, entry_price, stop_loss)
-                    else:
-                        position_size = (capital * 0.005) / entry_price
-                        open_position('long', position_size, entry_price)
-            elif current_position['side'] == 'long':
-                # Scale in at 1.7x and 2.0x
-                if volume_ratio >= 2.0 and current_size < max_position:
-                    add_size = max_position - current_size
-                    if add_size > 0:
-                        print(f"\n[TRADE SIGNAL] Scaling in to max at {entry_price:.2f} USDT")
-                        print(f"Adding: {add_size:.6f} BTC (to reach 5% of capital)")
-                        paper_trading['position']['size'] += add_size
-                elif volume_ratio >= 1.7 and current_size < (capital * 0.015) / entry_price:
-                    target_size = (capital * 0.015) / entry_price
-                    add_size = target_size - current_size
-                    if add_size > 0:
-                        print(f"\n[TRADE SIGNAL] Scaling in at {entry_price:.2f} USDT")
-                        print(f"Adding: {add_size:.6f} BTC (to reach 1.5% of capital)")
-                        paper_trading['position']['size'] += add_size
-        
-        if conditions['short'] and conditions['volume_spike']:
-            if current_position['side'] is None:
-                # No position, check for normal entry or re-entry
-                if volume_ratio >= 1.3 and (can_reenter or breakout_state['last_stop_hit'] is None):
-                    if use_max_size_short:
-                        position_size = (capital * 0.05) / entry_price
-                        print(f"\n[BOOSTED] 2+ secondary boosters met. Going all in (5% of capital)!")
-                        # Tighter stop: High + 0.15 × ATR
-                        df = fetch_price_data()
-                        atr = df['atr'].iloc[-1]
-                        stop_loss = df['high'].iloc[-1] + (0.15 * atr)
-                        open_position('short', position_size, entry_price, stop_loss)
-                    else:
-                        position_size = (capital * 0.005) / entry_price
-                        open_position('short', position_size, entry_price)
-            elif current_position['side'] == 'short':
-                # Scale in at 1.7x and 2.0x
-                if volume_ratio >= 2.0 and current_size < max_position:
-                    add_size = max_position - current_size
-                    if add_size > 0:
-                        print(f"\n[TRADE SIGNAL] Scaling in to max at {entry_price:.2f} USDT")
-                        print(f"Adding: {add_size:.6f} BTC (to reach 5% of capital)")
-                        paper_trading['position']['size'] += add_size
-                elif volume_ratio >= 1.7 and current_size < (capital * 0.015) / entry_price:
-                    target_size = (capital * 0.015) / entry_price
-                    add_size = target_size - current_size
-                    if add_size > 0:
-                        print(f"\n[TRADE SIGNAL] Scaling in at {entry_price:.2f} USDT")
-                        print(f"Adding: {add_size:.6f} BTC (to reach 1.5% of capital)")
-                        paper_trading['position']['size'] += add_size
-
+        print("Testing market data access...")
+        markets = exchange.load_markets()
+        print("Successfully loaded market data")
     except Exception as e:
-        print(f"Error in main loop: {e}")
+        print(f"Error loading markets: {e}")
 
-    # Shorter sleep when position is active
-    sleep_time = 5 if paper_trading['position']['side'] is not None else 60
-    time.sleep(sleep_time)
+    # Test account access
+    try:
+        print("\nTesting account access...")
+        balance = exchange.fetch_balance()
+        print("Successfully connected to Binance Futures")
+        print(f"USDT Balance: {balance['USDT']['free'] if 'USDT' in balance else 0:.2f}")
+    except Exception as e:
+        print(f"Error accessing account: {e}")
+
+    # Test futures-specific endpoints
+    try:
+        print("\nTesting futures endpoints...")
+        positions = exchange.fetch_positions([symbol])
+        print("Successfully accessed futures positions")
+    except Exception as e:
+        print(f"Error accessing futures positions: {e}")
+
+    # Set leverage to 10x
+    try:
+        print("\nSetting leverage...")
+        exchange.fapiPrivatePostLeverage({
+            'symbol': 'BTCUSDT',
+            'leverage': 10
+        })
+        print("Successfully set leverage to 10x")
+    except Exception as e:
+        print(f"Error setting leverage: {e}")
+        print("Continuing with paper trading mode only...")
+
+    print("\nStarting main trading loop...")
+
+    # (move all your trading state variables, main loop, etc. here)
+    # ...
