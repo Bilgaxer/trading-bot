@@ -347,29 +347,43 @@ def display_trading_conditions(data):
         st.markdown(f"- Price Below VWAP or SuperTrend Bearish: {'✅' if data['trading_conditions']['short_conditions']['secondary']['short'] else '❌'}")
 
 def display_market_data(data):
-    """Display current market data"""
+    """Display current market data with safe data access"""
     st.subheader("Market Data")
     
     # Create three columns for price, volume, and indicators
     col1, col2, col3 = st.columns(3)
     
+    # Safely get nested values
+    market_data = data.get('market_data', {})
+    trading_conditions = data.get('trading_conditions', {})
+    current_values = trading_conditions.get('current_values', {})
+    
     with col1:
         st.markdown("**Price Data**")
-        st.markdown(f"Current Price: {data['market_data']['current_price']:.2f} USDT")
-        st.markdown(f"VWAP: {data['trading_conditions']['current_values']['vwap']:.2f} USDT")
-        st.markdown(f"ATR: {data['trading_conditions']['current_values']['atr']:.2f} USDT")
+        st.markdown(f"Current Price: {market_data.get('current_price', 'N/A')} USDT")
+        st.markdown(f"VWAP: {current_values.get('vwap', 'N/A')} USDT")
+        st.markdown(f"ATR: {current_values.get('atr', 'N/A')} USDT")
     
     with col2:
         st.markdown("**Volume Data**")
-        st.markdown(f"Current Volume: {data['trading_conditions']['current_values']['volume']:.2f}")
-        st.markdown(f"20-period Volume MA: {data['trading_conditions']['current_values']['volume_ma']:.2f}")
-        st.markdown(f"Volume Ratio: {data['trading_conditions']['current_values']['volume_spike_ratio']:.2f}x")
+        st.markdown(f"Current Volume: {current_values.get('volume', 'N/A')}")
+        st.markdown(f"20-period Volume MA: {current_values.get('volume_ma', 'N/A')}")
+        st.markdown(f"Volume Ratio: {current_values.get('volume_spike_ratio', 'N/A')}x")
     
     with col3:
         st.markdown("**Indicators**")
-        st.markdown(f"SuperTrend: {'Bullish' if data['trading_conditions']['current_values']['supertrend'] else 'Bearish'}")
-        st.markdown(f"VWAP + 0.3×ATR: {data['trading_conditions']['current_values']['vwap'] + (0.3 * data['trading_conditions']['current_values']['atr']):.2f} USDT")
-        st.markdown(f"VWAP - 0.3×ATR: {data['trading_conditions']['current_values']['vwap'] - (0.3 * data['trading_conditions']['current_values']['atr']):.2f} USDT")
+        supertrend = 'Bullish' if current_values.get('supertrend', False) else 'Bearish'
+        st.markdown(f"SuperTrend: {supertrend}")
+        
+        # Safely calculate VWAP bands
+        vwap = current_values.get('vwap')
+        atr = current_values.get('atr')
+        if vwap is not None and atr is not None:
+            st.markdown(f"VWAP + 0.3×ATR: {vwap + (0.3 * atr):.2f} USDT")
+            st.markdown(f"VWAP - 0.3×ATR: {vwap - (0.3 * atr):.2f} USDT")
+        else:
+            st.markdown("VWAP + 0.3×ATR: N/A")
+            st.markdown("VWAP - 0.3×ATR: N/A")
 
 if __name__ == "__main__":
     main() 
