@@ -168,95 +168,102 @@ def main():
                               row_heights=[0.7, 0.3])
 
             # Price chart with trades and indicators
-            fig.add_trace(
-                go.Candlestick(
-                    x=df['timestamp'],
-                    open=df['open'],
-                    high=df['high'],
-                    low=df['low'],
-                    close=df['close'],
-                    name='Price'
-                ),
-                row=1, col=1
-            )
+            if all(col in df.columns for col in ['open', 'high', 'low', 'close']):
+                fig.add_trace(
+                    go.Candlestick(
+                        x=df['timestamp'],
+                        open=df['open'],
+                        high=df['high'],
+                        low=df['low'],
+                        close=df['close'],
+                        name='Price'
+                    ),
+                    row=1, col=1
+                )
+            else:
+                st.warning("Missing OHLC data for price chart.")
 
             # Add Donchian Channels
-            fig.add_trace(
-                go.Scatter(
-                    x=df['timestamp'],
-                    y=df['donchian_high'],
-                    name='Donchian High',
-                    line=dict(color='green', width=1, dash='dash')
-                ),
-                row=1, col=1
-            )
-
-            fig.add_trace(
-                go.Scatter(
-                    x=df['timestamp'],
-                    y=df['donchian_low'],
-                    name='Donchian Low',
-                    line=dict(color='red', width=1, dash='dash')
-                ),
-                row=1, col=1
-            )
-
-            fig.add_trace(
-                go.Scatter(
-                    x=df['timestamp'],
-                    y=df['donchian_mid'],
-                    name='Donchian Mid',
-                    line=dict(color='gray', width=1)
-                ),
-                row=1, col=1
-            )
-
-            # Add VWAP
-            fig.add_trace(
-                go.Scatter(
-                    x=df['timestamp'],
-                    y=df['vwap'],
-                    name='VWAP',
-                    line=dict(color='purple', width=1)
-                ),
-                row=1, col=1
-            )
-
-            # Add trades to the chart
-            for trade in data['recent_trades']:
-                # Entry point
+            if 'donchian_high' in df.columns:
                 fig.add_trace(
                     go.Scatter(
-                        x=[trade['timestamp']],
-                        y=[trade['entry']],
-                        mode='markers',
-                        marker=dict(
-                            symbol='triangle-up' if trade['side'] == 'long' else 'triangle-down',
-                            size=12,
-                            color='green' if trade['side'] == 'long' else 'red'
-                        ),
-                        name=f"{trade['side'].capitalize()} Entry"
+                        x=df['timestamp'],
+                        y=df['donchian_high'],
+                        name='Donchian High',
+                        line=dict(color='green', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+            if 'donchian_low' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['donchian_low'],
+                        name='Donchian Low',
+                        line=dict(color='red', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+            if 'donchian_mid' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['donchian_mid'],
+                        name='Donchian Mid',
+                        line=dict(color='gray', width=1)
                     ),
                     row=1, col=1
                 )
 
+            # Add VWAP
+            if 'vwap' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['vwap'],
+                        name='VWAP',
+                        line=dict(color='purple', width=1)
+                    ),
+                    row=1, col=1
+                )
+
+            # Add trades to the chart
+            for trade in data['recent_trades']:
+                if 'timestamp' in trade and 'entry' in trade:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[trade['timestamp']],
+                            y=[trade['entry']],
+                            mode='markers',
+                            marker=dict(
+                                symbol='triangle-up' if trade['side'] == 'long' else 'triangle-down',
+                                size=12,
+                                color='green' if trade['side'] == 'long' else 'red'
+                            ),
+                            name=f"{trade['side'].capitalize()} Entry"
+                        ),
+                        row=1, col=1
+                    )
+
             # Volume subplot with spike threshold
-            fig.add_trace(
-                go.Bar(x=df['timestamp'], y=df['volume'], name='Volume'),
-                row=2, col=1
-            )
-            
-            # Add volume MA
-            volume_ma = df['volume'].rolling(window=20).mean()
-            fig.add_trace(
-                go.Scatter(
-                    x=df['timestamp'],
-                    y=volume_ma * 1.3,  # Volume spike threshold (1.3x)
-                    name='Volume Threshold',
-                    line=dict(color='red', dash='dash')
-                ),
-                row=2, col=1
-            )
+            if 'volume' in df.columns:
+                fig.add_trace(
+                    go.Bar(x=df['timestamp'], y=df['volume'], name='Volume'),
+                    row=2, col=1
+                )
+                # Add volume MA
+                volume_ma = df['volume'].rolling(window=20).mean()
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=volume_ma * 1.3,
+                        name='Volume Threshold',
+                        line=dict(color='red', dash='dash')
+                    ),
+                    row=2, col=1
+                )
+            else:
+                st.warning("Missing volume data for volume chart.")
 
             # Update layout for better mobile viewing
             fig.update_layout(
