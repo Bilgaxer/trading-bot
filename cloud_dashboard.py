@@ -163,6 +163,16 @@ def main():
         st.subheader("Chart Indicators")
         show_vwap = st.toggle('VWAP', value=True)
         show_supertrend = st.toggle('SuperTrend', value=True)
+        show_supertrend_bands = st.toggle('SuperTrend Bands', value=True)
+        show_atr = st.toggle('ATR', value=False)
+        show_ema9 = st.toggle('EMA-9', value=False)
+        show_ema21 = st.toggle('EMA-21', value=False)
+        show_obv = st.toggle('OBV (On-Balance Volume)', value=False)
+        show_obv_sma = st.toggle('OBV SMA', value=False)
+        show_keltner = st.toggle('Keltner Channel', value=False)
+        show_ema15m = st.toggle('15m EMA', value=False)
+        show_pivots = st.toggle('Pivot/R1/S1', value=False)
+        show_strong_candle = st.toggle('Strong Candle', value=False)
         show_volume = st.toggle('Volume', value=True)
 
     # Load and display data
@@ -253,7 +263,19 @@ def main():
                 )
 
             # Add SuperTrend if enabled
-            if show_supertrend and 'supertrend_upper' in df.columns:
+            if show_supertrend and 'supertrend' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=[row['close'] if st else None for st, row in zip(df['supertrend'], df.itertuples())],
+                        name='SuperTrend',
+                        line=dict(color='blue', width=2, dash='dot')
+                    ),
+                    row=1, col=1
+                )
+
+            # Add SuperTrend Bands if enabled
+            if show_supertrend_bands and 'supertrend_upper' in df.columns and 'supertrend_lower' in df.columns:
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
@@ -269,6 +291,151 @@ def main():
                         y=df['supertrend_lower'],
                         name='SuperTrend Lower',
                         line=dict(color='blue', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+
+            # Add ATR if enabled
+            if show_atr and 'atr' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['atr'],
+                        name='ATR',
+                        line=dict(color='orange', width=1, dash='dot')
+                    ),
+                    row=2, col=1
+                )
+
+            # Add EMA-9 if enabled
+            if show_ema9 and 'ema9' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['ema9'],
+                        name='EMA-9',
+                        line=dict(color='green', width=1)
+                    ),
+                    row=1, col=1
+                )
+
+            # Add EMA-21 if enabled
+            if show_ema21 and 'ema21' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['ema21'],
+                        name='EMA-21',
+                        line=dict(color='red', width=1)
+                    ),
+                    row=1, col=1
+                )
+
+            # Add OBV if enabled
+            if show_obv and 'obv' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['obv'],
+                        name='OBV',
+                        line=dict(color='brown', width=1)
+                    ),
+                    row=2, col=1
+                )
+
+            # Add OBV SMA if enabled
+            if show_obv_sma and 'obv_sma' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['obv_sma'],
+                        name='OBV SMA',
+                        line=dict(color='gray', width=1, dash='dot')
+                    ),
+                    row=2, col=1
+                )
+
+            # Add Keltner Channel if enabled
+            if show_keltner and 'keltner_upper' in df.columns and 'keltner_lower' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['keltner_upper'],
+                        name='Keltner Upper',
+                        line=dict(color='magenta', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['keltner_lower'],
+                        name='Keltner Lower',
+                        line=dict(color='magenta', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+
+            # Add 15m EMA if enabled
+            if show_ema15m and 'ema_15m_now' in df.columns and 'ema_15m_prev' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['ema_15m_now'],
+                        name='15m EMA (now)',
+                        line=dict(color='black', width=1, dash='dot')
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['ema_15m_prev'],
+                        name='15m EMA (prev)',
+                        line=dict(color='black', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+
+            # Add Pivot, R1, S1 if enabled
+            if show_pivots and 'pivot' in df.columns and 'r1' in df.columns and 's1' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['pivot'],
+                        name='Pivot',
+                        line=dict(color='teal', width=1, dash='dot')
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['r1'],
+                        name='R1',
+                        line=dict(color='teal', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['s1'],
+                        name='S1',
+                        line=dict(color='teal', width=1, dash='dash')
+                    ),
+                    row=1, col=1
+                )
+
+            # Add Strong Candle if enabled
+            if show_strong_candle and 'strong_candle' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=[row['close'] if sc else None for sc, row in zip(df['strong_candle'], df.itertuples())],
+                        name='Strong Candle',
+                        mode='markers',
+                        marker=dict(color='orange', size=8, symbol='star'),
                     ),
                     row=1, col=1
                 )
