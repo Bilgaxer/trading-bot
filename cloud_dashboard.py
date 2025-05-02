@@ -160,6 +160,9 @@ def main():
             df['timestamp'] = pd.to_datetime(df['timestamp'])
             display_secondary_boosters(df)
 
+        # Display trade management events
+        display_trade_management(data)
+
         # Create price chart with mobile-friendly layout
         if 'price_history' in data:
             df = pd.DataFrame(data['price_history'])
@@ -439,6 +442,33 @@ def display_secondary_boosters(df):
         st.markdown(f"Votes: **{votes_short}/5**")
         for name, met in zip(booster_names, boosters_short):
             st.markdown(f"{'✅' if met else '❌'} {name}")
+
+def display_trade_management(data):
+    st.subheader("Trade Management Events")
+    pos = data.get('position', {})
+    if not pos or not pos.get('side'):
+        st.info("No active position.")
+        return
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"**Side:** {pos['side'].upper()}")
+        st.markdown(f"**Entry:** ${pos['entry_price']:.2f}")
+        st.markdown(f"**Size:** {pos['size']:.6f} BTC")
+        st.markdown(f"**Unrealized PnL:** ${pos['unrealized_pnl']:.2f}")
+    with col2:
+        st.markdown(f"**Stop Loss:** ${pos['stop_loss']:.2f}")
+        st.markdown(f"**Take Profit (ATR-based):** ${pos['take_profit']:.2f}")
+        events = []
+        if pos.get('partial_tp_taken', False):
+            events.append('🟢 **Partial TP:** 50% closed, 50% running')
+        if pos.get('breakeven_moved', False):
+            events.append('🟡 **Breakeven:** SL moved to entry')
+        if pos.get('trailing_activated', False):
+            events.append('🔵 **Trailing Stop:** Active at 0.3%')
+        if not events:
+            events.append('No advanced management events yet.')
+        for e in events:
+            st.markdown(e)
 
 if __name__ == "__main__":
     main() 
