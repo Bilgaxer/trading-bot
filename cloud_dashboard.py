@@ -67,23 +67,39 @@ def init_db():
 @st.cache_data(ttl=30)  # Cache data for 30 seconds by default
 def load_bot_data():
     try:
+        print("Initializing database connection...")
         db = init_db()
+        print("Getting bot data from database...")
         data = db.get_bot_data()
         if not data:
+            print("No trading data available from database")
             st.error("No trading data available")
             return None
+        print(f"Data loaded successfully: {len(str(data))} bytes")
         return data
     except Exception as e:
+        print(f"Error loading data: {str(e)}")
         st.error(f"Error loading data: {str(e)}")
         return None
 
 def main():
+    print("Entering main function...")
+    st.write("Starting main execution...")
+    
     # Add refresh controls to sidebar
     with st.sidebar:
+        st.write("Loading sidebar...")
         st.subheader("Refresh Settings")
         
         # Load current data to check position status
+        print("Loading bot data...")
         data = load_bot_data()
+        if data is None:
+            st.error("Failed to load bot data")
+            print("Bot data is None")
+            return
+        
+        print("Bot data loaded successfully")
         has_active_position = data and data['position']['side'] is not None
         
         if has_active_position:
