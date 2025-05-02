@@ -301,7 +301,7 @@ def save_bot_data(df, last_price, atr_value):
         # For 15m EMA, just use the last value for all rows (since we can't fetch 15m data for each row)
         ema_15m_now, ema_15m_prev = 0, 0
         try:
-            ema_15m_now, ema_15m_prev = fetch_15m_ema()
+            ema_15m_now, ema_15m_prev = fetch_15m_ema(df)
         except Exception:
             pass
         for idx, row in df.iterrows():
@@ -593,7 +593,7 @@ def update_position_pnl(current_price):
     # Forced exit on SuperTrend flip or 15m EMA slope <= 0
     df = fetch_price_data()
     supertrend = df['supertrend'].iloc[-1]
-    ema_now, ema_prev = fetch_15m_ema()
+    ema_now, ema_prev = fetch_15m_ema(df)
     ema_slope = ema_now - ema_prev
     if (position['side'] == 'long' and (not supertrend or ema_slope <= 0)) or \
        (position['side'] == 'short' and (supertrend or ema_slope >= 0)):
@@ -832,7 +832,7 @@ def display_status_update(df, conditions, last_price):
     boosters_long.append("OBV Slope Up" if obv.iloc[-1] > obv_sma.iloc[-1] else None)
     keltner_upper, _ = calculate_keltner_channel(df)
     boosters_long.append("Keltner Breakout" if df['close'].iloc[-1] > keltner_upper.iloc[-1] else None)
-    ema_now, ema_prev = fetch_15m_ema()
+    ema_now, ema_prev = fetch_15m_ema(df)
     boosters_long.append("15m EMA Up" if ema_now > ema_prev else None)
     _, r1, _ = calculate_pivot_levels(df)
     boosters_long.append("Pivot Bias (Below R1)" if df['close'].iloc[-1] < r1 else None)
@@ -847,7 +847,7 @@ def display_status_update(df, conditions, last_price):
     boosters_short.append("OBV Slope Down" if obv.iloc[-1] < obv_sma.iloc[-1] else None)
     _, keltner_lower = calculate_keltner_channel(df)
     boosters_short.append("Keltner Breakout" if df['close'].iloc[-1] < keltner_lower.iloc[-1] else None)
-    ema_now, ema_prev = fetch_15m_ema()
+    ema_now, ema_prev = fetch_15m_ema(df)
     boosters_short.append("15m EMA Down" if ema_now < ema_prev else None)
     _, _, s1 = calculate_pivot_levels(df)
     boosters_short.append("Pivot Bias (Above S1)" if df['close'].iloc[-1] > s1 else None)
@@ -898,11 +898,13 @@ def calculate_keltner_channel(df, ema_period=20, atr_period=20, mult=1.2):
     df['keltner_lower'] = ema - mult * atr
     return df['keltner_upper'], df['keltner_lower']
 
-def fetch_15m_ema():
-    ohlcv_15m = exchange.fetch_ohlcv(symbol, '15m', limit=30)
-    df_15m = pd.DataFrame(ohlcv_15m, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    ema_20 = ta.trend.ema_indicator(df_15m['close'], window=20)
-    return ema_20.iloc[-1], ema_20.iloc[-2]
+def fetch_15m_ema(df):
+    # If df contains 15m data, calculate EMA-20 from it
+    if len(df) >= 20:
+        ema_20 = ta.trend.ema_indicator(df['close'], window=20)
+        return ema_20.iloc[-1], ema_20.iloc[-2]
+    else:
+        return None, None
 
 def calculate_pivot_levels(df):
     today = df['timestamp'].dt.date.iloc[-1]
@@ -936,12 +938,13 @@ def check_secondary_boosters(df, side):
         votes += 1
     if side == 'short' and df['close'].iloc[-1] < keltner_lower.iloc[-1]:
         votes += 1
-    # 15m EMA trend
-    ema_now, ema_prev = fetch_15m_ema()
-    if side == 'long' and ema_now > ema_prev:
-        votes += 1
-    if side == 'short' and ema_now < ema_prev:
-        votes += 1
+    # 15m EMA trend (use df)
+    ema_now, ema_prev = fetch_15m_ema(df)
+    if ema_now is not None and ema_prev is not None:
+        if side == 'long' and ema_now > ema_prev:
+            votes += 1
+        if side == 'short' and ema_now < ema_prev:
+            votes += 1
     # Pivot bias
     pivot, r1, s1 = calculate_pivot_levels(df)
     if side == 'long' and df['close'].iloc[-1] < r1:

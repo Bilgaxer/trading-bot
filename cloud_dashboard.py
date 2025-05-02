@@ -622,23 +622,24 @@ def display_secondary_boosters(df):
     votes_long = check_secondary_boosters(df, 'long')
     obv, obv_sma = calculate_obv(df)
     keltner_upper, _ = calculate_keltner_channel(df)
-    ema_now, ema_prev = fetch_15m_ema()
+    ema_now, ema_prev = fetch_15m_ema(df)
     _, r1, _ = calculate_pivot_levels(df)
     boosters_long = [
         obv.iloc[-1] > obv_sma.iloc[-1],
         df['close'].iloc[-1] > keltner_upper.iloc[-1],
-        ema_now > ema_prev,
+        (ema_now is not None and ema_prev is not None and ema_now > ema_prev),
         df['close'].iloc[-1] < r1,
         is_strong_candle(df)
     ]
     # Short boosters
     votes_short = check_secondary_boosters(df, 'short')
     _, keltner_lower = calculate_keltner_channel(df)
+    ema_now, ema_prev = fetch_15m_ema(df)
     _, _, s1 = calculate_pivot_levels(df)
     boosters_short = [
         obv.iloc[-1] < obv_sma.iloc[-1],
         df['close'].iloc[-1] < keltner_lower.iloc[-1],
-        ema_now < ema_prev,
+        (ema_now is not None and ema_prev is not None and ema_now < ema_prev),
         df['close'].iloc[-1] > s1,
         is_strong_candle(df)
     ]
