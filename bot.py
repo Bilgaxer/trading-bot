@@ -95,6 +95,15 @@ active_position = {
     'trailing_stop': None
 }
 
+# Add breakout tracking
+breakout_state = {
+    'breakout_bar': None,  # Price level where breakout occurred
+    'breakout_time': None,  # Time of breakout
+    'breakout_side': None,  # 'long' or 'short'
+    'last_stop_hit': None,  # Time of last stop loss hit
+    'last_stop_price': None  # Price where stop was hit
+}
+
 # Trading parameters
 VOLUME_THRESHOLD = 1.3  # Initial entry threshold (0.5% position)
 ATR_MULTIPLIER = 0.3  # 0.3 × ATR for VWAP offset
@@ -103,6 +112,7 @@ POSITION_SIZE_2 = 0.01   # 1% of capital for second addition
 POSITION_SIZE_3 = 0.05   # 5% of capital max position size
 MAX_POSITION_SIZE = 0.05  # 5% of total capital cap per trade
 TP_PERCENTAGE = 0.007  # 0.7% take profit
+REENTRY_TIME_LIMIT = 300  # 5 minutes to consider re-entry after stop loss
 INITIAL_STOP_PERCENTAGE = 0.004  # 0.4% initial stop loss
 POSITION_SIZE_BOOST = 1.5  # 50% boost when secondary conditions are met
 
@@ -133,6 +143,8 @@ paper_trading = {
     'win_trades': 0,
     'loss_trades': 0
 }
+
+TP_MULTIPLIER = 1.4  # k value for ATR-based take profit (adjust as needed)
 
 def calculate_vwap(df):
     """Calculate VWAP (Volume Weighted Average Price)"""
@@ -237,8 +249,9 @@ def calculate_atr_threshold(df):
     return median_atr * 1.05  # Lowered from 1.1 to 1.05 (5% above median)
 
 def check_primary_conditions(df):
-    """Check primary trading conditions"""
+    """Check primary trading conditions with breakout confirmation"""
     current_price = df['close'].iloc[-1]
+    prev_close = df['close'].iloc[-2]
     vwap = df['vwap'].iloc[-1]
     atr = df['atr'].iloc[-1]
     
@@ -252,6 +265,24 @@ def check_primary_conditions(df):
     
     # Check SuperTrend condition
     supertrend_bullish = df['supertrend'].iloc[-1]
+    
+    # Track breakout conditions
+    if current_price > vwap_atr_long and prev_close <= vwap_atr_long:
+        breakout_state['breakout_bar'] = vwap_atr_long
+        breakout_state['breakout_time'] = time.time()
+        breakout_state['breakout_side'] = 'long'
+    elif current_price < vwap_atr_short and prev_close >= vwap_atr_short:
+        breakout_state['breakout_bar'] = vwap_atr_short
+        breakout_state['breakout_time'] = time.time()
+        breakout_state['breakout_side'] = 'short'
+    
+    # Check if price stays above/below breakout level
+    breakout_confirmed = False
+    if breakout_state['breakout_bar'] is not None:
+        if breakout_state['breakout_side'] == 'long':
+            breakout_confirmed = current_price > breakout_state['breakout_bar']
+        else:
+            breakout_confirmed = current_price < breakout_state['breakout_bar']
     
     # Determine position size based on volume
     position_size = 0
@@ -267,8 +298,8 @@ def check_primary_conditions(df):
     below_vwap = current_price < vwap
     
     return {
-        'long': current_price > vwap_atr_long and volume_ratio >= VOLUME_THRESHOLD,
-        'short': current_price < vwap_atr_short and volume_ratio >= VOLUME_THRESHOLD,
+        'long': current_price > vwap_atr_long and volume_ratio >= VOLUME_THRESHOLD and breakout_confirmed,
+        'short': current_price < vwap_atr_short and volume_ratio >= VOLUME_THRESHOLD and breakout_confirmed,
         'volume_spike': volume_ratio >= VOLUME_THRESHOLD,
         'volume_ratio': volume_ratio,
         'position_size': position_size,
@@ -429,12 +460,23 @@ def open_position(side, size, price, stop_loss=None, take_profit=None):
     # Calculate position size based on volume ratio
     position_size = size  # Size is already calculated based on volume ratio
     
-    # Set stop loss and take profit
-    if stop_loss is None:
-        stop_loss = price * (1 - INITIAL_STOP_PERCENTAGE if side == 'long' else 1 + INITIAL_STOP_PERCENTAGE)
+    # Get latest data for ATR-based stop loss and take profit
+    df = fetch_price_data()
+    atr = df['atr'].iloc[-1]
     
+    # Set stop loss using Low - 0.3 × ATR for longs, High + 0.3 × ATR for shorts
+    if stop_loss is None:
+        if side == 'long':
+            stop_loss = df['low'].iloc[-1] - (0.3 * atr)
+        else:
+            stop_loss = df['high'].iloc[-1] + (0.3 * atr)
+    
+    # ATR-based take profit
     if take_profit is None:
-        take_profit = price * (1 + TP_PERCENTAGE if side == 'long' else 1 - TP_PERCENTAGE)
+        if side == 'long':
+            take_profit = price + TP_MULTIPLIER * atr
+        else:
+            take_profit = price - TP_MULTIPLIER * atr
     
     paper_trading['position'] = {
         'side': side,
@@ -444,7 +486,9 @@ def open_position(side, size, price, stop_loss=None, take_profit=None):
         'unrealized_pnl': 0.0,
         'stop_loss': stop_loss,
         'take_profit': take_profit,
-        'trailing_activated': False
+        'trailing_activated': False,
+        'partial_tp_taken': False,  # Track if partial TP was taken
+        'breakeven_moved': False    # Track if SL moved to breakeven
     }
     
     return True
@@ -554,33 +598,97 @@ def analyze_sentiment(news_list):
     return avg_sentiment
 
 def update_position_pnl(current_price):
-    if paper_trading['position']['side'] is None:
+    position = paper_trading['position']
+    if position['side'] is None:
         return
     
-    size = paper_trading['position']['size']
-    entry = paper_trading['position']['entry_price']
-    leverage = paper_trading['position']['leverage']
+    size = position['size']
+    entry = position['entry_price']
+    leverage = position['leverage']
     
-    if paper_trading['position']['side'] == 'long':
+    if position['side'] == 'long':
         paper_trading['position']['unrealized_pnl'] = (current_price - entry) * size * leverage
     else:  # short
         paper_trading['position']['unrealized_pnl'] = (entry - current_price) * size * leverage
     
-    # Check for stop loss or take profit hits
-    if paper_trading['position']['side'] == 'long':
-        if current_price <= paper_trading['position']['stop_loss']:
+    # Move SL to breakeven at +0.3% profit
+    if not position.get('breakeven_moved', False):
+        profit_pct = ((current_price / entry - 1) * 100) if position['side'] == 'long' else ((entry / current_price - 1) * 100)
+        if profit_pct >= 0.3:
+            paper_trading['position']['stop_loss'] = entry
+            paper_trading['position']['breakeven_moved'] = True
+            print("[INFO] Stop loss moved to breakeven!")
+    
+    # Partial take profit logic
+    if not position.get('partial_tp_taken', False):
+        if (position['side'] == 'long' and current_price >= position['take_profit']) or \
+           (position['side'] == 'short' and current_price <= position['take_profit']):
+            # Check SuperTrend and EMA9/EMA21
+            df = fetch_price_data()
+            supertrend = df['supertrend'].iloc[-1]
+            ema9 = ta.trend.ema_indicator(df['close'], window=9).iloc[-1]
+            ema21 = ta.trend.ema_indicator(df['close'], window=21).iloc[-1]
+            if (position['side'] == 'long' and supertrend and ema9 > ema21) or \
+               (position['side'] == 'short' and not supertrend and ema9 < ema21):
+                # Take 50% profit, leave 50% running
+                paper_trading['position']['size'] *= 0.5
+                paper_trading['position']['partial_tp_taken'] = True
+                print("[INFO] Partial take profit: 50% closed, 50% left to run.")
+                # Set trailing stop for remaining
+                paper_trading['position']['trailing_activated'] = True
+                # Set trailing stop at 0.3% from current price
+                if position['side'] == 'long':
+                    paper_trading['position']['stop_loss'] = current_price * 0.997
+                else:
+                    paper_trading['position']['stop_loss'] = current_price * 1.003
+                # Update take profit to a very high/low value so it doesn't trigger again
+                paper_trading['position']['take_profit'] = 1e10 if position['side'] == 'long' else -1e10
+            else:
+                # If not, close full position
+                close_position(current_price, 'Take profit hit')
+                return
+    
+    # Trailing stop for remaining 50%
+    if position.get('trailing_activated', False):
+        if position['side'] == 'long':
+            new_stop = current_price * 0.997
+            if new_stop > position['stop_loss']:
+                paper_trading['position']['stop_loss'] = new_stop
+        else:
+            new_stop = current_price * 1.003
+            if new_stop < position['stop_loss']:
+                paper_trading['position']['stop_loss'] = new_stop
+    
+    # Forced exit on SuperTrend flip or 15m EMA slope <= 0
+    df = fetch_price_data()
+    supertrend = df['supertrend'].iloc[-1]
+    ema_now, ema_prev = fetch_15m_ema()
+    ema_slope = ema_now - ema_prev
+    if (position['side'] == 'long' and (not supertrend or ema_slope <= 0)) or \
+       (position['side'] == 'short' and (supertrend or ema_slope >= 0)):
+        print("[INFO] SuperTrend flip or 15m EMA slope flat/negative. Exiting remaining position.")
+        close_position(current_price, 'SuperTrend/EMA exit')
+        return
+    
+    # Check for stop loss or take profit hits (for remaining position)
+    if position['side'] == 'long':
+        if current_price <= position['stop_loss']:
             close_position(current_price, 'Stop loss hit')
-        elif current_price >= paper_trading['position']['take_profit']:
-            close_position(current_price, 'Take profit hit')
+        # take_profit is now set to a very high value after partial TP
     else:  # short
-        if current_price >= paper_trading['position']['stop_loss']:
+        if current_price >= position['stop_loss']:
             close_position(current_price, 'Stop loss hit')
-        elif current_price <= paper_trading['position']['take_profit']:
-            close_position(current_price, 'Take profit hit')
+        # take_profit is now set to a very low value after partial TP
 
 def close_position(price, reason=''):
+    """Close position and handle re-entry tracking"""
     if paper_trading['position']['side'] is None:
         return
+    
+    # Track stop loss hits for potential re-entry
+    if reason == 'Stop loss hit':
+        breakout_state['last_stop_hit'] = time.time()
+        breakout_state['last_stop_price'] = price
     
     pnl = paper_trading['position']['unrealized_pnl']
     paper_trading['total_pnl'] += pnl
@@ -594,7 +702,7 @@ def close_position(price, reason=''):
     print(f"[PAPER] PnL: {pnl:.2f} USDT ({reason})")
     print(f"[PAPER] New Balance: {paper_trading['balance']:.2f} USDT")
     
-    # Record the trade with timestamp
+    # Record the trade
     paper_trading['trades'].append({
         'side': paper_trading['position']['side'],
         'entry': paper_trading['position']['entry_price'],
@@ -765,6 +873,7 @@ def display_status_update(df, conditions, last_price):
     print(f"Volume Ratio: {conditions['volume_ratio']:.2f}x (Threshold: 1.3x)")
     print(f"VWAP: ${conditions['vwap']:.2f}")
     print(f"ATR: ${conditions['atr']:.2f}")
+    print(f"TP Target (ATR-based): {paper_trading['position']['take_profit']:.2f}")
     
     print("\nLong Conditions Met:" if conditions['long'] and conditions['volume_spike'] else "\nLong Conditions Not Met:")
     print(f"✓ Price > VWAP + 0.3×ATR") if conditions['long'] else print("✗ Price > VWAP + 0.3×ATR")
@@ -776,13 +885,142 @@ def display_status_update(df, conditions, last_price):
     print(f"✓ Volume > 1.3x 20MA") if conditions['volume_spike'] else print("✗ Volume > 1.3x 20MA")
     print(f"✓ Secondary (VWAP/SuperTrend)") if conditions['secondary']['short'] else print("✗ Secondary (VWAP/SuperTrend)")
     
-    if paper_trading['position']['side']:
-        print(f"\nActive {paper_trading['position']['side'].upper()} Position:")
-        print(f"Entry: ${paper_trading['position']['entry_price']:.2f}")
-        print(f"Size: {paper_trading['position']['size']:.6f} BTC")
-        print(f"Unrealized PnL: ${paper_trading['position']['unrealized_pnl']:.2f}")
+    # Print secondary boosters
+    print("\nSecondary Boosters (Long):")
+    booster_names = [
+        "OBV Slope Up",
+        "Keltner Breakout",
+        "15m EMA Up",
+        "Pivot Bias (Below R1)",
+        "Strong Candle Body"
+    ]
+    votes_long = check_secondary_boosters(df, 'long')
+    print(f"Votes: {votes_long}/5")
+    boosters_long = []
+    obv, obv_sma = calculate_obv(df)
+    boosters_long.append("OBV Slope Up" if obv.iloc[-1] > obv_sma.iloc[-1] else None)
+    keltner_upper, _ = calculate_keltner_channel(df)
+    boosters_long.append("Keltner Breakout" if df['close'].iloc[-1] > keltner_upper.iloc[-1] else None)
+    ema_now, ema_prev = fetch_15m_ema()
+    boosters_long.append("15m EMA Up" if ema_now > ema_prev else None)
+    _, r1, _ = calculate_pivot_levels(df)
+    boosters_long.append("Pivot Bias (Below R1)" if df['close'].iloc[-1] < r1 else None)
+    boosters_long.append("Strong Candle Body" if is_strong_candle(df) else None)
+    for name, met in zip(booster_names, boosters_long):
+        print(f"✓ {name}" if met else f"✗ {name}")
+    print("\nSecondary Boosters (Short):")
+    votes_short = check_secondary_boosters(df, 'short')
+    print(f"Votes: {votes_short}/5")
+    boosters_short = []
+    obv, obv_sma = calculate_obv(df)
+    boosters_short.append("OBV Slope Down" if obv.iloc[-1] < obv_sma.iloc[-1] else None)
+    _, keltner_lower = calculate_keltner_channel(df)
+    boosters_short.append("Keltner Breakout" if df['close'].iloc[-1] < keltner_lower.iloc[-1] else None)
+    ema_now, ema_prev = fetch_15m_ema()
+    boosters_short.append("15m EMA Down" if ema_now < ema_prev else None)
+    _, _, s1 = calculate_pivot_levels(df)
+    boosters_short.append("Pivot Bias (Above S1)" if df['close'].iloc[-1] > s1 else None)
+    boosters_short.append("Strong Candle Body" if is_strong_candle(df) else None)
+    for name, met in zip([
+        "OBV Slope Down",
+        "Keltner Breakout",
+        "15m EMA Down",
+        "Pivot Bias (Above S1)",
+        "Strong Candle Body"
+    ], boosters_short):
+        print(f"✓ {name}" if met else f"✗ {name}")
     
+    # Show advanced trade management events
+    pos = paper_trading['position']
+    if pos['side']:
+        print(f"\nActive {pos['side'].upper()} Position:")
+        print(f"Entry: ${pos['entry_price']:.2f}")
+        print(f"Size: {pos['size']:.6f} BTC")
+        print(f"Unrealized PnL: ${pos['unrealized_pnl']:.2f}")
+        print(f"Stop Loss: {pos['stop_loss']:.2f}")
+        print(f"Take Profit: {pos['take_profit']:.2f}")
+        if pos.get('partial_tp_taken', False):
+            print("[PARTIAL TP] 50% position closed, 50% running.")
+        if pos.get('breakeven_moved', False):
+            print("[BREAKEVEN] Stop loss moved to entry price.")
+        if pos.get('trailing_activated', False):
+            print("[TRAILING STOP] Trailing stop active at 0.3%.")
     print("="*50)
+
+def calculate_obv(df):
+    obv = [0]
+    for i in range(1, len(df)):
+        if df['close'].iloc[i] > df['close'].iloc[i-1]:
+            obv.append(obv[-1] + df['volume'].iloc[i])
+        elif df['close'].iloc[i] < df['close'].iloc[i-1]:
+            obv.append(obv[-1] - df['volume'].iloc[i])
+        else:
+            obv.append(obv[-1])
+    df['obv'] = obv
+    df['obv_sma'] = pd.Series(obv).rolling(window=7).mean()  # 5-10 period SMA
+    return df['obv'], df['obv_sma']
+
+def calculate_keltner_channel(df, ema_period=20, atr_period=20, mult=1.2):
+    ema = ta.trend.ema_indicator(df['close'], window=ema_period)
+    atr = ta.volatility.average_true_range(df['high'], df['low'], df['close'], window=atr_period)
+    df['keltner_upper'] = ema + mult * atr
+    df['keltner_lower'] = ema - mult * atr
+    return df['keltner_upper'], df['keltner_lower']
+
+def fetch_15m_ema():
+    ohlcv_15m = exchange.fetch_ohlcv(symbol, '15m', limit=30)
+    df_15m = pd.DataFrame(ohlcv_15m, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    ema_20 = ta.trend.ema_indicator(df_15m['close'], window=20)
+    return ema_20.iloc[-1], ema_20.iloc[-2]
+
+def calculate_pivot_levels(df):
+    today = df['timestamp'].dt.date.iloc[-1]
+    today_df = df[df['timestamp'].dt.date == today]
+    if today_df.empty:
+        today_df = df.iloc[-20:]
+    high = today_df['high'].max()
+    low = today_df['low'].min()
+    close = today_df['close'].iloc[-1]
+    pivot = (high + low + close) / 3
+    r1 = 2 * pivot - low
+    s1 = 2 * pivot - high
+    return pivot, r1, s1
+
+def is_strong_candle(df):
+    body = abs(df['close'].iloc[-1] - df['open'].iloc[-1])
+    rng = df['high'].iloc[-1] - df['low'].iloc[-1]
+    return rng > 0 and (body / rng) >= 0.6
+
+def check_secondary_boosters(df, side):
+    votes = 0
+    # OBV slope
+    obv, obv_sma = calculate_obv(df)
+    if side == 'long' and obv.iloc[-1] > obv_sma.iloc[-1]:
+        votes += 1
+    if side == 'short' and obv.iloc[-1] < obv_sma.iloc[-1]:
+        votes += 1
+    # Keltner breakout
+    keltner_upper, keltner_lower = calculate_keltner_channel(df)
+    if side == 'long' and df['close'].iloc[-1] > keltner_upper.iloc[-1]:
+        votes += 1
+    if side == 'short' and df['close'].iloc[-1] < keltner_lower.iloc[-1]:
+        votes += 1
+    # 15m EMA trend
+    ema_now, ema_prev = fetch_15m_ema()
+    if side == 'long' and ema_now > ema_prev:
+        votes += 1
+    if side == 'short' and ema_now < ema_prev:
+        votes += 1
+    # Pivot bias
+    pivot, r1, s1 = calculate_pivot_levels(df)
+    if side == 'long' and df['close'].iloc[-1] < r1:
+        votes += 1
+    if side == 'short' and df['close'].iloc[-1] > s1:
+        votes += 1
+    # Strong candle body
+    if is_strong_candle(df):
+        votes += 1
+    return votes
 
 while True:
     try:
@@ -825,16 +1063,41 @@ while True:
         capital = paper_trading['balance']
         max_position = (capital * 0.05) / entry_price
         
+        # Check for re-entry after stop loss
+        can_reenter = False
+        if (breakout_state['last_stop_hit'] is not None and 
+            current_time - breakout_state['last_stop_hit'] <= REENTRY_TIME_LIMIT):
+            # Check if price has reclaimed breakout level
+            if (breakout_state['breakout_side'] == 'long' and 
+                last_price > breakout_state['breakout_bar']):
+                can_reenter = True
+            elif (breakout_state['breakout_side'] == 'short' and 
+                  last_price < breakout_state['breakout_bar']):
+                can_reenter = True
+        
+        # --- Secondary boosters ---
+        secondary_votes_long = check_secondary_boosters(df, 'long')
+        secondary_votes_short = check_secondary_boosters(df, 'short')
+        
+        # If 2+ boosters, go all in and tighten stop
+        use_max_size_long = secondary_votes_long >= 2
+        use_max_size_short = secondary_votes_short >= 2
+        
         if conditions['long'] and conditions['volume_spike']:
             if current_position['side'] is None:
-                # No position, open with 0.5% if volume >= 1.3x
-                if volume_ratio >= 1.3:
-                    position_size = (capital * 0.005) / entry_price
-                    print(f"\n[TRADE SIGNAL] Long entry at {entry_price:.2f} USDT")
-                    print(f"Position Size: {position_size:.6f} BTC (0.5% of capital)")
-                    stop_loss = entry_price * 0.996
-                    take_profit = entry_price * 1.007
-                    open_position('long', position_size, entry_price, stop_loss, take_profit)
+                # No position, check for normal entry or re-entry
+                if volume_ratio >= 1.3 and (can_reenter or breakout_state['last_stop_hit'] is None):
+                    if use_max_size_long:
+                        position_size = (capital * 0.05) / entry_price
+                        print(f"\n[BOOSTED] 2+ secondary boosters met. Going all in (5% of capital)!")
+                        # Tighter stop: Low - 0.15 × ATR
+                        df = fetch_price_data()
+                        atr = df['atr'].iloc[-1]
+                        stop_loss = df['low'].iloc[-1] - (0.15 * atr)
+                        open_position('long', position_size, entry_price, stop_loss)
+                    else:
+                        position_size = (capital * 0.005) / entry_price
+                        open_position('long', position_size, entry_price)
             elif current_position['side'] == 'long':
                 # Scale in at 1.7x and 2.0x
                 if volume_ratio >= 2.0 and current_size < max_position:
@@ -850,16 +1113,22 @@ while True:
                         print(f"\n[TRADE SIGNAL] Scaling in at {entry_price:.2f} USDT")
                         print(f"Adding: {add_size:.6f} BTC (to reach 1.5% of capital)")
                         paper_trading['position']['size'] += add_size
+        
         if conditions['short'] and conditions['volume_spike']:
             if current_position['side'] is None:
-                # No position, open with 0.5% if volume >= 1.3x
-                if volume_ratio >= 1.3:
-                    position_size = (capital * 0.005) / entry_price
-                    print(f"\n[TRADE SIGNAL] Short entry at {entry_price:.2f} USDT")
-                    print(f"Position Size: {position_size:.6f} BTC (0.5% of capital)")
-                    stop_loss = entry_price * 1.004
-                    take_profit = entry_price * 0.993
-                    open_position('short', position_size, entry_price, stop_loss, take_profit)
+                # No position, check for normal entry or re-entry
+                if volume_ratio >= 1.3 and (can_reenter or breakout_state['last_stop_hit'] is None):
+                    if use_max_size_short:
+                        position_size = (capital * 0.05) / entry_price
+                        print(f"\n[BOOSTED] 2+ secondary boosters met. Going all in (5% of capital)!")
+                        # Tighter stop: High + 0.15 × ATR
+                        df = fetch_price_data()
+                        atr = df['atr'].iloc[-1]
+                        stop_loss = df['high'].iloc[-1] + (0.15 * atr)
+                        open_position('short', position_size, entry_price, stop_loss)
+                    else:
+                        position_size = (capital * 0.005) / entry_price
+                        open_position('short', position_size, entry_price)
             elif current_position['side'] == 'short':
                 # Scale in at 1.7x and 2.0x
                 if volume_ratio >= 2.0 and current_size < max_position:

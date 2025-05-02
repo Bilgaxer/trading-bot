@@ -154,6 +154,12 @@ def main():
         # Display market data
         display_market_data(data)
 
+        # Display secondary boosters
+        if 'price_history' in data:
+            df = pd.DataFrame(data['price_history'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            display_secondary_boosters(df)
+
         # Create price chart with mobile-friendly layout
         if 'price_history' in data:
             df = pd.DataFrame(data['price_history'])
@@ -353,7 +359,7 @@ def display_market_data(data):
     # Create three columns for price, volume, and indicators
     col1, col2, col3 = st.columns(3)
     
-    # Safely get nested values
+    # Safely get nested values with defaults
     market_data = data.get('market_data', {})
     trading_conditions = data.get('trading_conditions', {})
     current_values = trading_conditions.get('current_values', {})
@@ -372,18 +378,67 @@ def display_market_data(data):
     
     with col3:
         st.markdown("**Indicators**")
-        supertrend = 'Bullish' if current_values.get('supertrend', False) else 'Bearish'
-        st.markdown(f"SuperTrend: {supertrend}")
+        supertrend = current_values.get('supertrend')
+        st.markdown(f"SuperTrend: {'Bullish' if supertrend else 'Bearish'}")
         
         # Safely calculate VWAP bands
         vwap = current_values.get('vwap')
         atr = current_values.get('atr')
         if vwap is not None and atr is not None:
-            st.markdown(f"VWAP + 0.3×ATR: {vwap + (0.3 * atr):.2f} USDT")
-            st.markdown(f"VWAP - 0.3×ATR: {vwap - (0.3 * atr):.2f} USDT")
+            try:
+                st.markdown(f"VWAP + 0.3×ATR: {vwap + (0.3 * atr):.2f} USDT")
+                st.markdown(f"VWAP - 0.3×ATR: {vwap - (0.3 * atr):.2f} USDT")
+            except (TypeError, ValueError):
+                st.markdown("VWAP + 0.3×ATR: N/A")
+                st.markdown("VWAP - 0.3×ATR: N/A")
         else:
             st.markdown("VWAP + 0.3×ATR: N/A")
             st.markdown("VWAP - 0.3×ATR: N/A")
+
+def display_secondary_boosters(df):
+    st.subheader("Secondary Booster Conditions")
+    booster_names = [
+        "OBV Slope",
+        "Keltner Breakout",
+        "15m EMA Trend",
+        "Pivot Bias",
+        "Strong Candle Body"
+    ]
+    # Long boosters
+    votes_long = check_secondary_boosters(df, 'long')
+    obv, obv_sma = calculate_obv(df)
+    keltner_upper, _ = calculate_keltner_channel(df)
+    ema_now, ema_prev = fetch_15m_ema()
+    _, r1, _ = calculate_pivot_levels(df)
+    boosters_long = [
+        obv.iloc[-1] > obv_sma.iloc[-1],
+        df['close'].iloc[-1] > keltner_upper.iloc[-1],
+        ema_now > ema_prev,
+        df['close'].iloc[-1] < r1,
+        is_strong_candle(df)
+    ]
+    # Short boosters
+    votes_short = check_secondary_boosters(df, 'short')
+    _, keltner_lower = calculate_keltner_channel(df)
+    _, _, s1 = calculate_pivot_levels(df)
+    boosters_short = [
+        obv.iloc[-1] < obv_sma.iloc[-1],
+        df['close'].iloc[-1] < keltner_lower.iloc[-1],
+        ema_now < ema_prev,
+        df['close'].iloc[-1] > s1,
+        is_strong_candle(df)
+    ]
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Long Boosters**")
+        st.markdown(f"Votes: **{votes_long}/5**")
+        for name, met in zip(booster_names, boosters_long):
+            st.markdown(f"{'✅' if met else '❌'} {name}")
+    with col2:
+        st.markdown("**Short Boosters**")
+        st.markdown(f"Votes: **{votes_short}/5**")
+        for name, met in zip(booster_names, boosters_short):
+            st.markdown(f"{'✅' if met else '❌'} {name}")
 
 if __name__ == "__main__":
     main() 
