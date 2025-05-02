@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -5,8 +8,8 @@ from plotly.subplots import make_subplots
 import json
 from datetime import datetime
 import time
-import os
 from db_helper import DatabaseHelper
+from bot import check_secondary_boosters, calculate_obv, calculate_keltner_channel, fetch_15m_ema, calculate_pivot_levels, is_strong_candle
 
 # Streamlit page config
 st.set_page_config(
