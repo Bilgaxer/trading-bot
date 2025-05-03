@@ -39,7 +39,7 @@ breakout_state = {
     'last_stop_price': None  # Price where stop was hit
 }
 
-TP_MULTIPLIER = 1.4  # k value for ATR-based take profit (adjust as needed)
+TP_MULTIPLIER = 1.2  # k value for ATR-based take profit (adjust as needed)
 ATR_MULTIPLIER = 0.3  # 0.3 × ATR for VWAP offset
 VOLUME_THRESHOLD = 1.3  # Initial entry threshold (0.5% position)
 POSITION_SIZE_1 = 0.005  # 0.5% of capital for initial position
@@ -248,31 +248,50 @@ def save_bot_data(df, last_price, atr_value):
                 'timestamp': str(trade['timestamp'])
             })
 
-        # Get trading conditions and convert numpy bool values to Python bool values
-        conditions = check_primary_conditions(df)
-        conditions_serializable = {
-            'long': bool(conditions['long']),
-            'short': bool(conditions['short']),
-            'volume_spike': bool(conditions['volume_spike']),
-            'volume_ratio': float(conditions['volume_ratio']),
-            'position_size': float(conditions['position_size']),
-            'vwap': float(conditions['vwap']),
-            'atr': float(conditions['atr']),
-            'secondary': {
-                'long': bool(conditions['secondary']['long']),
-                'short': bool(conditions['secondary']['short'])
-            }
-        }
-        
+        # Get UT Bot Alert signals for dashboard
+        ut_signal = int(df['ut_position'].iloc[-1]) if 'ut_position' in df.columns else 0
+        trail_stop = float(df['trail_stop'].iloc[-1]) if 'trail_stop' in df.columns else 0.0
+        score = None
+        if 'ema9' in df.columns and 'ema21' in df.columns and 'supertrend' in df.columns:
+            ema9 = df['ema9'].iloc[-1]
+            ema21 = df['ema21'].iloc[-1]
+            supertrend_bullish = df['supertrend'].iloc[-1]
+            volume_ma = df['volume'].rolling(window=20).mean().iloc[-1]
+            volume_spike = df['volume'].iloc[-1] > volume_ma * 1.05
+            ema_15m_now = df['ema_15m_now'].iloc[-1] if 'ema_15m_now' in df.columns else None
+            ema_15m_prev = df['ema_15m_prev'].iloc[-1] if 'ema_15m_prev' in df.columns else None
+            ema_15m_slope_positive = (ema_15m_now is not None and ema_15m_prev is not None and ema_15m_now > ema_15m_prev)
+            score = 0
+            if supertrend_bullish:
+                if ut_signal == 1:
+                    if ema9 > ema21:
+                        score += 1
+                    if volume_spike:
+                        score += 0.5
+                    if ema_15m_slope_positive:
+                        score += 1
+                elif ut_signal == -1:
+                    if ema9 < ema21:
+                        score += 1
+                    if volume_spike:
+                        score += 0.5
+                    if ema_15m_now is not None and ema_15m_prev is not None and ema_15m_now < ema_15m_prev:
+                        score += 1
         # Current values for display
+        def py_bool(val):
+            # Convert numpy.bool_ or other types to native Python bool
+            return bool(val) if isinstance(val, (bool, int, float)) or hasattr(val, '__bool__') else False
         current_values = {
             'price': float(last_price),
-            'vwap': float(df['vwap'].iloc[-1]),
+            'vwap': float(df['vwap'].iloc[-1]) if 'vwap' in df.columns else None,
             'volume': float(df['volume'].iloc[-1]),
             'volume_ma': float(df['volume'].rolling(window=20).mean().iloc[-1]),
             'volume_spike_ratio': float(df['volume'].iloc[-1] / df['volume'].rolling(window=20).mean().iloc[-1]),
             'atr': float(atr_value),
-            'supertrend': bool(df['supertrend'].iloc[-1])
+            'supertrend': py_bool(df['supertrend'].iloc[-1]) if 'supertrend' in df.columns else None,
+            'ut_signal': ut_signal,
+            'trail_stop': trail_stop,
+            'score': score
         }
 
         # Position data
@@ -288,17 +307,14 @@ def save_bot_data(df, last_price, atr_value):
 
         # Convert DataFrame to list of dictionaries for price history
         price_history = []
-        # Calculate all indicators needed for each row
         obv, obv_sma = calculate_obv(df)
         keltner_upper, keltner_lower = calculate_keltner_channel(df)
         ema9, ema21 = calculate_emas(df)
         atr = calculate_atr(df)
-        # Calculate pivots for each row (useful for today)
         pivots = [calculate_pivot_levels(df.iloc[:i+1]) for i in range(len(df))]
         pivot_vals = [p[0] for p in pivots]
         r1_vals = [p[1] for p in pivots]
         s1_vals = [p[2] for p in pivots]
-        # For 15m EMA, just use the last value for all rows (since we can't fetch 15m data for each row)
         ema_15m_now, ema_15m_prev = 0, 0
         try:
             ema_15m_now, ema_15m_prev = fetch_15m_ema(df)
@@ -312,8 +328,8 @@ def save_bot_data(df, last_price, atr_value):
                 'low': float(row['low']),
                 'close': float(row['close']),
                 'volume': float(row['volume']),
-                'vwap': float(row['vwap']),
-                'supertrend': bool(row['supertrend']),
+                'vwap': float(row['vwap']) if 'vwap' in row else None,
+                'supertrend': py_bool(row['supertrend']) if 'supertrend' in row else None,
                 'supertrend_upper': float(row['supertrend_upper']) if 'supertrend_upper' in row else None,
                 'supertrend_lower': float(row['supertrend_lower']) if 'supertrend_lower' in row else None,
                 'atr': float(atr.iloc[idx]) if hasattr(atr, 'iloc') else float(atr),
@@ -328,7 +344,9 @@ def save_bot_data(df, last_price, atr_value):
                 'pivot': float(pivot_vals[idx]),
                 'r1': float(r1_vals[idx]),
                 's1': float(s1_vals[idx]),
-                'strong_candle': bool(is_strong_candle(df.iloc[:idx+1]))
+                'strong_candle': py_bool(is_strong_candle(df.iloc[:idx+1])),
+                'ut_position': int(row['ut_position']) if 'ut_position' in row else 0,
+                'trail_stop': float(row['trail_stop']) if 'trail_stop' in row else 0.0
             })
 
         data = {
@@ -342,8 +360,8 @@ def save_bot_data(df, last_price, atr_value):
             'recent_trades': recent_trades,
             'position': position_data,
             'trading_conditions': {
-                'long_conditions': conditions_serializable,
-                'short_conditions': conditions_serializable,
+                'long_conditions': check_primary_conditions(df),
+                'short_conditions': check_primary_conditions(df),
                 'current_values': current_values
             },
             'market_data': {
@@ -554,13 +572,12 @@ def update_position_pnl(current_price):
     if not position.get('partial_tp_taken', False):
         if (position['side'] == 'long' and current_price >= position['take_profit']) or \
            (position['side'] == 'short' and current_price <= position['take_profit']):
-            # Check SuperTrend and EMA9/EMA21
+            # Check only EMA9/EMA21
             df = fetch_price_data()
-            supertrend = df['supertrend'].iloc[-1]
             ema9 = ta.trend.ema_indicator(df['close'], window=9).iloc[-1]
             ema21 = ta.trend.ema_indicator(df['close'], window=21).iloc[-1]
-            if (position['side'] == 'long' and supertrend and ema9 > ema21) or \
-               (position['side'] == 'short' and not supertrend and ema9 < ema21):
+            if (position['side'] == 'long' and ema9 > ema21) or \
+               (position['side'] == 'short' and ema9 < ema21):
                 # Take 50% profit, leave 50% running
                 paper_trading['position']['size'] *= 0.5
                 paper_trading['position']['partial_tp_taken'] = True
@@ -590,15 +607,14 @@ def update_position_pnl(current_price):
             if new_stop < position['stop_loss']:
                 paper_trading['position']['stop_loss'] = new_stop
     
-    # Forced exit on SuperTrend flip or 15m EMA slope <= 0
+    # Forced exit on 5m EMA slope <= 0
     df = fetch_price_data()
-    supertrend = df['supertrend'].iloc[-1]
-    ema_now, ema_prev = fetch_15m_ema(df)
+    ema_now, ema_prev = fetch_5m_ema(df)
     ema_slope = ema_now - ema_prev
-    if (position['side'] == 'long' and (not supertrend or ema_slope <= 0)) or \
-       (position['side'] == 'short' and (supertrend or ema_slope >= 0)):
-        print("[INFO] SuperTrend flip or 15m EMA slope flat/negative. Exiting remaining position.")
-        close_position(current_price, 'SuperTrend/EMA exit')
+    if (position['side'] == 'long' and ema_slope <= 0) or \
+       (position['side'] == 'short' and ema_slope >= 0):
+        print("[INFO] 5m EMA slope flat/negative. Exiting remaining position.")
+        close_position(current_price, '5m EMA exit')
         return
     
     # Check for stop loss or take profit hits (for remaining position)
@@ -791,7 +807,6 @@ def get_worst_trade():
         return 0.0
 
 def display_status_update(df, conditions, last_price):
-    """Display a status update with current conditions and metrics"""
     print("\n" + "="*50)
     print(f"Status Update: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("="*50)
@@ -799,83 +814,19 @@ def display_status_update(df, conditions, last_price):
     print(f"Current Balance: ${paper_trading['balance']:.2f}")
     print(f"Total PnL: ${paper_trading['total_pnl']:.2f}")
     print(f"Win Rate: {(paper_trading['win_trades'] / len(paper_trading['trades'])*100 if paper_trading['trades'] else 0):.1f}%")
-    
     print("\nTrading Conditions:")
-    print(f"Volume Ratio: {conditions['volume_ratio']:.2f}x (Threshold: 1.3x)")
-    print(f"VWAP: ${conditions['vwap']:.2f}")
-    print(f"ATR: ${conditions['atr']:.2f}")
-    print(f"TP Target (ATR-based): {paper_trading['position']['take_profit']:.2f}")
-    
-    print("\nLong Conditions Met:" if conditions['long'] and conditions['volume_spike'] else "\nLong Conditions Not Met:")
-    print(f"✓ Price > VWAP + 0.3×ATR") if conditions['long'] else print("✗ Price > VWAP + 0.3×ATR")
-    print(f"✓ Volume > 1.3x 20MA") if conditions['volume_spike'] else print("✗ Volume > 1.3x 20MA")
-    print(f"✓ Secondary (VWAP/SuperTrend)") if conditions['secondary']['long'] else print("✗ Secondary (VWAP/SuperTrend)")
-    
-    print("\nShort Conditions Met:" if conditions['short'] and conditions['volume_spike'] else "\nShort Conditions Not Met:")
-    print(f"✓ Price < VWAP - 0.3×ATR") if conditions['short'] else print("✗ Price < VWAP - 0.3×ATR")
-    print(f"✓ Volume > 1.3x 20MA") if conditions['volume_spike'] else print("✗ Volume > 1.3x 20MA")
-    print(f"✓ Secondary (VWAP/SuperTrend)") if conditions['secondary']['short'] else print("✗ Secondary (VWAP/SuperTrend)")
-    
-    # Print secondary boosters
-    print("\nSecondary Boosters (Long):")
-    booster_names = [
-        "OBV Slope Up",
-        "Keltner Breakout",
-        "15m EMA Up",
-        "Pivot Bias (Below R1)",
-        "Strong Candle Body"
-    ]
-    votes_long = check_secondary_boosters(df, 'long')
-    print(f"Votes: {votes_long}/5")
-    boosters_long = []
-    obv, obv_sma = calculate_obv(df)
-    boosters_long.append("OBV Slope Up" if obv.iloc[-1] > obv_sma.iloc[-1] else None)
-    keltner_upper, _ = calculate_keltner_channel(df)
-    boosters_long.append("Keltner Breakout" if df['close'].iloc[-1] > keltner_upper.iloc[-1] else None)
-    ema_now, ema_prev = fetch_15m_ema(df)
-    boosters_long.append("15m EMA Up" if ema_now > ema_prev else None)
-    _, r1, _ = calculate_pivot_levels(df)
-    boosters_long.append("Pivot Bias (Below R1)" if df['close'].iloc[-1] < r1 else None)
-    boosters_long.append("Strong Candle Body" if is_strong_candle(df) else None)
-    for name, met in zip(booster_names, boosters_long):
-        print(f"✓ {name}" if met else f"✗ {name}")
-    print("\nSecondary Boosters (Short):")
-    votes_short = check_secondary_boosters(df, 'short')
-    print(f"Votes: {votes_short}/5")
-    boosters_short = []
-    obv, obv_sma = calculate_obv(df)
-    boosters_short.append("OBV Slope Down" if obv.iloc[-1] < obv_sma.iloc[-1] else None)
-    _, keltner_lower = calculate_keltner_channel(df)
-    boosters_short.append("Keltner Breakout" if df['close'].iloc[-1] < keltner_lower.iloc[-1] else None)
-    ema_now, ema_prev = fetch_15m_ema(df)
-    boosters_short.append("15m EMA Down" if ema_now < ema_prev else None)
-    _, _, s1 = calculate_pivot_levels(df)
-    boosters_short.append("Pivot Bias (Above S1)" if df['close'].iloc[-1] > s1 else None)
-    boosters_short.append("Strong Candle Body" if is_strong_candle(df) else None)
-    for name, met in zip([
-        "OBV Slope Down",
-        "Keltner Breakout",
-        "15m EMA Down",
-        "Pivot Bias (Above S1)",
-        "Strong Candle Body"
-    ], boosters_short):
-        print(f"✓ {name}" if met else f"✗ {name}")
-    
-    # Show advanced trade management events
-    pos = paper_trading['position']
-    if pos['side']:
-        print(f"\nActive {pos['side'].upper()} Position:")
-        print(f"Entry: ${pos['entry_price']:.2f}")
-        print(f"Size: {pos['size']:.6f} BTC")
-        print(f"Unrealized PnL: ${pos['unrealized_pnl']:.2f}")
-        print(f"Stop Loss: {pos['stop_loss']:.2f}")
-        print(f"Take Profit: {pos['take_profit']:.2f}")
-        if pos.get('partial_tp_taken', False):
-            print("[PARTIAL TP] 50% position closed, 50% running.")
-        if pos.get('breakeven_moved', False):
-            print("[BREAKEVEN] Stop loss moved to entry price.")
-        if pos.get('trailing_activated', False):
-            print("[TRAILING STOP] Trailing stop active at 0.3%.")
+    # Print volume ratio if possible
+    if 'volume' in df.columns:
+        volume_ma = df['volume'].rolling(window=20).mean().iloc[-1]
+        volume_ratio = df['volume'].iloc[-1] / volume_ma if volume_ma else 0
+        print(f"Volume Ratio: {volume_ratio:.2f}x (Threshold: 1.3x)")
+    # Print UT Bot and score
+    ut_signal = conditions.get('ut_signal', 0)
+    score = conditions.get('score', None)
+    print(f"UT Bot Alert: {'Long' if ut_signal == 1 else 'Short' if ut_signal == -1 else 'Neutral'}")
+    print(f"Score: {score if score is not None else 'N/A'}")
+    print("Decision Logic:")
+    print("- Score >= 1.5: Full Position\n- Score >= 1: Half Position\n- Otherwise: No Trade")
     print("="*50)
 
 def calculate_obv(df):
@@ -898,8 +849,8 @@ def calculate_keltner_channel(df, ema_period=20, atr_period=20, mult=1.2):
     df['keltner_lower'] = ema - mult * atr
     return df['keltner_upper'], df['keltner_lower']
 
-def fetch_15m_ema(df):
-    # If df contains 15m data, calculate EMA-20 from it
+def fetch_5m_ema(df):
+    # If df contains 5m data, calculate EMA-20 from it
     if len(df) >= 20:
         ema_20 = ta.trend.ema_indicator(df['close'], window=20)
         return ema_20.iloc[-1], ema_20.iloc[-2]
@@ -938,8 +889,8 @@ def check_secondary_boosters(df, side):
         votes += 1
     if side == 'short' and df['close'].iloc[-1] < keltner_lower.iloc[-1]:
         votes += 1
-    # 15m EMA trend (use df)
-    ema_now, ema_prev = fetch_15m_ema(df)
+    # 5m EMA trend (use df)
+    ema_now, ema_prev = fetch_5m_ema(df)
     if ema_now is not None and ema_prev is not None:
         if side == 'long' and ema_now > ema_prev:
             votes += 1
@@ -955,6 +906,38 @@ def check_secondary_boosters(df, side):
     if is_strong_candle(df):
         votes += 1
     return votes
+
+def calculate_atr_ut(data, period=10):
+    data['H-L'] = data['high'] - data['low']
+    data['H-PC'] = abs(data['high'] - data['close'].shift(1))
+    data['L-PC'] = abs(data['low'] - data['close'].shift(1))
+    data['TR'] = data[['H-L', 'H-PC', 'L-PC']].max(axis=1)
+    data['ATR_UT'] = data['TR'].rolling(period).mean()
+    return data
+
+def calculate_ut_bot_alert(data, atr_period=10, key_value=1):
+    data = calculate_atr_ut(data, atr_period)
+    data['trail_stop'] = 0.0
+    data['ut_position'] = 0
+    for i in range(1, len(data)):
+        atr = data.at[i, 'ATR_UT']
+        price = data.at[i, 'close']
+        prev_stop = data.at[i-1, 'trail_stop']
+        prev_price = data.at[i-1, 'close']
+        if price > prev_stop and prev_price > prev_stop:
+            new_stop = max(prev_stop, price - key_value * atr)
+        elif price < prev_stop and prev_price < prev_stop:
+            new_stop = min(prev_stop, price + key_value * atr)
+        else:
+            new_stop = price - key_value * atr if price > prev_stop else price + key_value * atr
+        data.at[i, 'trail_stop'] = new_stop
+        if prev_price < prev_stop and price > new_stop:
+            data.at[i, 'ut_position'] = 1
+        elif prev_price > prev_stop and price < new_stop:
+            data.at[i, 'ut_position'] = -1
+        else:
+            data.at[i, 'ut_position'] = data.at[i-1, 'ut_position']
+    return data
 
 # --- Main bot logic: only runs when executing this file directly ---
 if __name__ == "__main__":
@@ -1040,6 +1023,11 @@ if __name__ == "__main__":
                 time.sleep(5)
                 continue
 
+            # --- UT Bot Alert calculation ---
+            df = calculate_ut_bot_alert(df)
+            ut_signal = df['ut_position'].iloc[-1]
+            prev_ut_signal = df['ut_position'].iloc[-2] if len(df) > 1 else 0
+
             atr = calculate_atr(df)
             update_funding_rate()
             last_price = df['close'].iloc[-1]
@@ -1047,117 +1035,78 @@ if __name__ == "__main__":
             # Update paper trading position PnL
             update_position_pnl(last_price)
 
-            # Get trading conditions
-            conditions = check_primary_conditions(df)
+            # Get indicators for secondary scoring
+            ema9, ema21 = calculate_emas(df)
+            supertrend_bullish = df['supertrend'].iloc[-1]
+            volume_ma = df['volume'].rolling(window=20).mean()
+            volume_spike = df['volume'].iloc[-1] > volume_ma.iloc[-1] * 1.05
+            ema_5m_now, ema_5m_prev = fetch_5m_ema(df)
+            ema_5m_slope_positive = (ema_5m_now is not None and ema_5m_prev is not None and ema_5m_now > ema_5m_prev)
+
+            # --- Primary trigger: UT Bot Alert ---
+            open_signal = None
+            if ut_signal == 1 and prev_ut_signal != 1:
+                open_signal = 'long'
+            elif ut_signal == -1 and prev_ut_signal != -1:
+                open_signal = 'short'
+
+            # --- Secondary scoring ---
+            score = 0
+            if open_signal:
+                # EMA9 > EMA21 condition
+                if (open_signal == 'long' and ema9.iloc[-1] > ema21.iloc[-1]) or \
+                   (open_signal == 'short' and ema9.iloc[-1] < ema21.iloc[-1]):
+                    score += 1
+                
+                # SuperTrend alignment condition
+                if (open_signal == 'long' and supertrend_bullish) or \
+                   (open_signal == 'short' and not supertrend_bullish):
+                    score += 0.5
+                
+                # Volume spike condition
+                if volume_spike:
+                    score += 0.5
+                
+                # 5m EMA slope condition
+                if (open_signal == 'long' and ema_5m_slope_positive) or \
+                   (open_signal == 'short' and not ema_5m_slope_positive):
+                    score += 1
+
+            # --- Position sizing decision ---
+            position_size = 0
+            if open_signal:
+                if score >= 2:
+                    position_size = (paper_trading['balance'] * 0.05) / last_price  # Full position
+                    print(f"[UT BOT] {open_signal.upper()} signal: FULL position (score={score})")
+                elif score >= 1:
+                    position_size = (paper_trading['balance'] * 0.025) / last_price  # Half position
+                    print(f"[UT BOT] {open_signal.upper()} signal: HALF position (score={score})")
+                else:
+                    print(f"[UT BOT] {open_signal.upper()} signal: Not enough confirmations (score={score}), skipping.")
+                    open_signal = None
+
+            # --- Open position if signal and size ---
+            current_position = paper_trading['position']
+            if open_signal and current_position['side'] is None and position_size > 0:
+                open_position(open_signal, position_size, last_price)
 
             # Save data for dashboard - different intervals based on position status
             if paper_trading['position']['side'] is not None:
-                # Save data every minute when position is active
-                if current_time - last_summary_time >= 60:  # 60 seconds = 1 minute
+                if current_time - last_summary_time >= 60:
                     save_bot_data(df, last_price, atr.iloc[-1] if hasattr(atr, 'iloc') else atr)
-                    display_status_update(df, conditions, last_price)
+                    display_status_update(df, {'ut_signal': ut_signal, 'score': score}, last_price)
                     last_summary_time = current_time
             else:
-                # Save data every 5 minutes when no position is active
-                if current_time - last_summary_time >= 300:  # 300 seconds = 5 minutes
+                if current_time - last_summary_time >= 300:
                     save_bot_data(df, last_price, atr.iloc[-1] if hasattr(atr, 'iloc') else atr)
-                    display_status_update(df, conditions, last_price)
+                    display_status_update(df, {'ut_signal': ut_signal, 'score': score}, last_price)
                     last_summary_time = current_time
 
-            # Trading logic for opening new positions or scaling in
-            volume_ratio = conditions['volume_ratio']
-            entry_price = last_price
-            current_position = paper_trading['position']
-            current_size = current_position['size'] if current_position['side'] else 0.0
-            capital = paper_trading['balance']
-            max_position = (capital * 0.05) / entry_price
-
-            # Check for re-entry after stop loss
-            can_reenter = False
-            if (breakout_state['last_stop_hit'] is not None and 
-                current_time - breakout_state['last_stop_hit'] <= REENTRY_TIME_LIMIT):
-                # Check if price has reclaimed breakout level
-                if (breakout_state['breakout_side'] == 'long' and 
-                    last_price > breakout_state['breakout_bar']):
-                    can_reenter = True
-                elif (breakout_state['breakout_side'] == 'short' and 
-                      last_price < breakout_state['breakout_bar']):
-                    can_reenter = True
-
-            # --- Secondary boosters ---
-            secondary_votes_long = check_secondary_boosters(df, 'long')
-            secondary_votes_short = check_secondary_boosters(df, 'short')
-
-            # If 2+ boosters, go all in and tighten stop
-            use_max_size_long = secondary_votes_long >= 2
-            use_max_size_short = secondary_votes_short >= 2
-
-            if conditions['long'] and conditions['volume_spike']:
-                if current_position['side'] is None:
-                    # No position, check for normal entry or re-entry
-                    if volume_ratio >= 1.3 and (can_reenter or breakout_state['last_stop_hit'] is None):
-                        if use_max_size_long:
-                            position_size = (capital * 0.05) / entry_price
-                            print(f"\n[BOOSTED] 2+ secondary boosters met. Going all in (5% of capital)!")
-                            # Tighter stop: Low - 0.15 × ATR
-                            df = fetch_price_data()
-                            atr = df['atr'].iloc[-1]
-                            stop_loss = df['low'].iloc[-1] - (0.15 * atr)
-                            open_position('long', position_size, entry_price, stop_loss)
-                        else:
-                            position_size = (capital * 0.005) / entry_price
-                            open_position('long', position_size, entry_price)
-                elif current_position['side'] == 'long':
-                    # Scale in at 1.7x and 2.0x
-                    if volume_ratio >= 2.0 and current_size < max_position:
-                        add_size = max_position - current_size
-                        if add_size > 0:
-                            print(f"\n[TRADE SIGNAL] Scaling in to max at {entry_price:.2f} USDT")
-                            print(f"Adding: {add_size:.6f} BTC (to reach 5% of capital)")
-                            paper_trading['position']['size'] += add_size
-                    elif volume_ratio >= 1.7 and current_size < (capital * 0.015) / entry_price:
-                        target_size = (capital * 0.015) / entry_price
-                        add_size = target_size - current_size
-                        if add_size > 0:
-                            print(f"\n[TRADE SIGNAL] Scaling in at {entry_price:.2f} USDT")
-                            print(f"Adding: {add_size:.6f} BTC (to reach 1.5% of capital)")
-                            paper_trading['position']['size'] += add_size
-
-            if conditions['short'] and conditions['volume_spike']:
-                if current_position['side'] is None:
-                    # No position, check for normal entry or re-entry
-                    if volume_ratio >= 1.3 and (can_reenter or breakout_state['last_stop_hit'] is None):
-                        if use_max_size_short:
-                            position_size = (capital * 0.05) / entry_price
-                            print(f"\n[BOOSTED] 2+ secondary boosters met. Going all in (5% of capital)!")
-                            # Tighter stop: High + 0.15 × ATR
-                            df = fetch_price_data()
-                            atr = df['atr'].iloc[-1]
-                            stop_loss = df['high'].iloc[-1] + (0.15 * atr)
-                            open_position('short', position_size, entry_price, stop_loss)
-                        else:
-                            position_size = (capital * 0.005) / entry_price
-                            open_position('short', position_size, entry_price)
-                elif current_position['side'] == 'short':
-                    # Scale in at 1.7x and 2.0x
-                    if volume_ratio >= 2.0 and current_size < max_position:
-                        add_size = max_position - current_size
-                        if add_size > 0:
-                            print(f"\n[TRADE SIGNAL] Scaling in to max at {entry_price:.2f} USDT")
-                            print(f"Adding: {add_size:.6f} BTC (to reach 5% of capital)")
-                            paper_trading['position']['size'] += add_size
-                    elif volume_ratio >= 1.7 and current_size < (capital * 0.015) / entry_price:
-                        target_size = (capital * 0.015) / entry_price
-                        add_size = target_size - current_size
-                        if add_size > 0:
-                            print(f"\n[TRADE SIGNAL] Scaling in at {entry_price:.2f} USDT")
-                            print(f"Adding: {add_size:.6f} BTC (to reach 1.5% of capital)")
-                            paper_trading['position']['size'] += add_size
+            # Sleep logic
+            sleep_time = 5 if paper_trading['position']['side'] is not None else 60
+            time.sleep(sleep_time)
 
         except Exception as e:
             print("Exception in main trading loop:", e)
             import traceback
             traceback.print_exc()
-        # Shorter sleep when position is active
-        sleep_time = 5 if paper_trading['position']['side'] is not None else 60
-        time.sleep(sleep_time)

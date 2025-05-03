@@ -161,6 +161,7 @@ def main():
         
         # Chart indicator toggles
         st.subheader("Chart Indicators")
+        show_ut_bot = st.toggle('UT Bot Alert', value=True)
         show_vwap = st.toggle('VWAP', value=True)
         show_supertrend = st.toggle('SuperTrend', value=True)
         show_supertrend_bands = st.toggle('SuperTrend Bands', value=True)
@@ -170,7 +171,7 @@ def main():
         show_obv = st.toggle('OBV (On-Balance Volume)', value=False)
         show_obv_sma = st.toggle('OBV SMA', value=False)
         show_keltner = st.toggle('Keltner Channel', value=False)
-        show_ema15m = st.toggle('15m EMA', value=False)
+        show_ema5m = st.toggle('5m EMA', value=False)
         show_pivots = st.toggle('Pivot/R1/S1', value=False)
         show_strong_candle = st.toggle('Strong Candle', value=False)
         show_volume = st.toggle('Volume', value=True)
@@ -267,7 +268,7 @@ def main():
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=[row['close'] if st else None for st, row in zip(df['supertrend'], df.itertuples())],
+                        y=[row['close'] if bool(st) else None for st, row in zip(df['supertrend'], df.itertuples())],
                         name='SuperTrend',
                         line=dict(color='blue', width=2, dash='dot')
                     ),
@@ -376,13 +377,13 @@ def main():
                     row=1, col=1
                 )
 
-            # Add 15m EMA if enabled
-            if show_ema15m and 'ema_15m_now' in df.columns and 'ema_15m_prev' in df.columns:
+            # Add 5m EMA if enabled
+            if show_ema5m and 'ema_5m_now' in df.columns and 'ema_5m_prev' in df.columns:
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=df['ema_15m_now'],
-                        name='15m EMA (now)',
+                        y=df['ema_5m_now'],
+                        name='5m EMA (now)',
                         line=dict(color='black', width=1, dash='dot')
                     ),
                     row=1, col=1
@@ -390,8 +391,8 @@ def main():
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=df['ema_15m_prev'],
-                        name='15m EMA (prev)',
+                        y=df['ema_5m_prev'],
+                        name='5m EMA (prev)',
                         line=dict(color='black', width=1, dash='dash')
                     ),
                     row=1, col=1
@@ -432,13 +433,46 @@ def main():
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=[row['close'] if sc else None for sc, row in zip(df['strong_candle'], df.itertuples())],
+                        y=[row['close'] if bool(sc) else None for sc, row in zip(df['strong_candle'], df.itertuples())],
                         name='Strong Candle',
                         mode='markers',
                         marker=dict(color='orange', size=8, symbol='star'),
                     ),
                     row=1, col=1
                 )
+
+            # Add UT Bot Alert if enabled
+            if show_ut_bot and 'ut_position' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=[row['close'] if ut == 1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
+                        name='UT Bot Long',
+                        mode='markers',
+                        marker=dict(color='lime', size=10, symbol='triangle-up'),
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=[row['close'] if ut == -1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
+                        name='UT Bot Short',
+                        mode='markers',
+                        marker=dict(color='red', size=10, symbol='triangle-down'),
+                    ),
+                    row=1, col=1
+                )
+                if 'trail_stop' in df.columns:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df['timestamp'],
+                            y=df['trail_stop'],
+                            name='UT Bot Trail Stop',
+                            line=dict(color='orange', width=1, dash='dot')
+                        ),
+                        row=1, col=1
+                    )
 
             # Add trades to the chart
             for trade in data['recent_trades']:
@@ -544,27 +578,15 @@ def main():
 def display_trading_conditions(data):
     """Display current trading conditions"""
     st.subheader("Trading Conditions")
-    
-    # Create two columns for long and short conditions
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**Long Entry Conditions**")
-        st.markdown("Primary Conditions:")
-        st.markdown(f"- Price > VWAP + 0.3×ATR: {'✅' if data['trading_conditions']['long_conditions']['long'] else '❌'}")
-        st.markdown(f"- Volume > 1.3x 20MA: {'✅' if data['trading_conditions']['long_conditions']['volume_spike'] else '❌'}")
-        
-        st.markdown("Secondary Conditions:")
-        st.markdown(f"- Price Above VWAP or SuperTrend Bullish: {'✅' if data['trading_conditions']['long_conditions']['secondary']['long'] else '❌'}")
-    
-    with col2:
-        st.markdown("**Short Entry Conditions**")
-        st.markdown("Primary Conditions:")
-        st.markdown(f"- Price < VWAP - 0.3×ATR: {'✅' if data['trading_conditions']['short_conditions']['short'] else '❌'}")
-        st.markdown(f"- Volume > 1.3x 20MA: {'✅' if data['trading_conditions']['short_conditions']['volume_spike'] else '❌'}")
-        
-        st.markdown("Secondary Conditions:")
-        st.markdown(f"- Price Below VWAP or SuperTrend Bearish: {'✅' if data['trading_conditions']['short_conditions']['secondary']['short'] else '❌'}")
+    current_values = data.get('trading_conditions', {}).get('current_values', {})
+    ut_signal = current_values.get('ut_signal', 0)
+    score = current_values.get('score', None)
+    supertrend = current_values.get('supertrend', None)
+    st.markdown(f"**UT Bot Alert:** {'Long' if ut_signal == 1 else 'Short' if ut_signal == -1 else 'Neutral'}")
+    st.markdown(f"**Score:** {score if score is not None else 'N/A'}")
+    st.markdown(f"**SuperTrend:** {'Bullish' if supertrend else 'Bearish' if supertrend is not None else 'N/A'}")
+    st.markdown("**Decision Logic:**")
+    st.markdown("- Score >= 2: Full Position\n- Score >= 1: Half Position\n- Otherwise: No Trade")
 
 def display_market_data(data):
     """Display current market data with safe data access"""
@@ -614,7 +636,7 @@ def display_secondary_boosters(df):
     booster_names = [
         "OBV Slope",
         "Keltner Breakout",
-        "15m EMA Trend",
+        "5m EMA Trend",
         "Pivot Bias",
         "Strong Candle Body"
     ]
