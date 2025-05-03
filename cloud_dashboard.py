@@ -12,7 +12,7 @@ from db_helper import DatabaseHelper
 from bot import (
     calculate_vwap, calculate_supertrend,
     calculate_atr, calculate_obv, calculate_keltner_channel,
-    calculate_pivot_levels, is_strong_candle, fetch_15m_ema,
+    calculate_pivot_levels, is_strong_candle, fetch_5m_ema,
     check_secondary_boosters
 )
 
@@ -644,7 +644,7 @@ def display_secondary_boosters(df):
     votes_long = check_secondary_boosters(df, 'long')
     obv, obv_sma = calculate_obv(df)
     keltner_upper, _ = calculate_keltner_channel(df)
-    ema_now, ema_prev = fetch_15m_ema(df)
+    ema_now, ema_prev = fetch_5m_ema(df)
     _, r1, _ = calculate_pivot_levels(df)
     boosters_long = [
         obv.iloc[-1] > obv_sma.iloc[-1],
@@ -656,7 +656,7 @@ def display_secondary_boosters(df):
     # Short boosters
     votes_short = check_secondary_boosters(df, 'short')
     _, keltner_lower = calculate_keltner_channel(df)
-    ema_now, ema_prev = fetch_15m_ema(df)
+    ema_now, ema_prev = fetch_5m_ema(df)
     _, _, s1 = calculate_pivot_levels(df)
     boosters_short = [
         obv.iloc[-1] < obv_sma.iloc[-1],
