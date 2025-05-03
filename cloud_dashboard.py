@@ -268,7 +268,7 @@ def main():
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=[row['close'] if bool(st) else None for st, row in zip(df['supertrend'], df.itertuples())],
+                        y=[row.close if bool(st) else None for st, row in zip(df['supertrend'], df.itertuples())],
                         name='SuperTrend',
                         line=dict(color='blue', width=2, dash='dot')
                     ),
@@ -433,7 +433,7 @@ def main():
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=[row['close'] if bool(sc) else None for sc, row in zip(df['strong_candle'], df.itertuples())],
+                        y=[row.close if bool(sc) else None for sc, row in zip(df['strong_candle'], df.itertuples())],
                         name='Strong Candle',
                         mode='markers',
                         marker=dict(color='orange', size=8, symbol='star'),
@@ -446,7 +446,7 @@ def main():
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=[row['close'] if ut == 1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
+                        y=[row.close if ut == 1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
                         name='UT Bot Long',
                         mode='markers',
                         marker=dict(color='lime', size=10, symbol='triangle-up'),
@@ -456,7 +456,7 @@ def main():
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
-                        y=[row['close'] if ut == -1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
+                        y=[row.close if ut == -1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
                         name='UT Bot Short',
                         mode='markers',
                         marker=dict(color='red', size=10, symbol='triangle-down'),
