@@ -229,6 +229,17 @@ def check_secondary_conditions(df):
         'short': below_vwap or (not supertrend_bullish)
     }
 
+def to_native_types(obj):
+    """Recursively convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: to_native_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [to_native_types(i) for i in obj]
+    elif isinstance(obj, np.generic):
+        return obj.item()
+    else:
+        return obj
+
 def save_bot_data(df, last_price, atr_value):
     try:
         # Calculate performance metrics
@@ -380,7 +391,7 @@ def save_bot_data(df, last_price, atr_value):
         }
 
         # Save to database
-        db.save_bot_data(data)
+        db.save_bot_data(to_native_types(data))
         
     except Exception as e:
         print(f"Error saving bot data: {e}")

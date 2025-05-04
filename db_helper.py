@@ -2,6 +2,18 @@ from pymongo import MongoClient
 from datetime import datetime
 import json
 import os
+import numpy as np
+
+def to_native_types(obj):
+    """Recursively convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: to_native_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [to_native_types(i) for i in obj]
+    elif isinstance(obj, np.generic):
+        return obj.item()
+    else:
+        return obj
 
 class DatabaseHelper:
     def __init__(self):
@@ -30,6 +42,7 @@ class DatabaseHelper:
         """Save bot data to MongoDB"""
         try:
             # Convert NumPy types to Python native types
+            data = to_native_types(data)
             data = json.loads(json.dumps(data))
             
             # Update main bot data
