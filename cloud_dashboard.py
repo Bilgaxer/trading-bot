@@ -16,6 +16,7 @@ from bot import (
     check_secondary_boosters
 )
 import numpy as np
+import pytz
 
 # Streamlit page config
 st.set_page_config(
@@ -29,10 +30,16 @@ st.set_page_config(
 st.markdown("""
     <style>
     .stMetric {
-        background-color: #f0f2f6;
+        background-color: var(--background-color, #f0f2f6);
+        color: var(--text-color, #222222);
         padding: 10px;
         border-radius: 5px;
         margin-bottom: 10px;
+        transition: background-color 0.3s, color 0.3s;
+    }
+    .st-dark .stMetric {
+        background-color: #222831 !important;
+        color: #f0f2f6 !important;
     }
     @media (max-width: 768px) {
         .stMetric {
@@ -222,7 +229,7 @@ def main():
         # Display secondary boosters
         if 'price_history' in data:
             df = pd.DataFrame(data['price_history'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata')
             display_secondary_boosters(df)
 
         # Display trade management events
@@ -231,7 +238,7 @@ def main():
         # Create price chart with mobile-friendly layout
         if 'price_history' in data:
             df = pd.DataFrame(data['price_history'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata')
             
             # Make chart more mobile-friendly
             chart_height = 600 if st.session_state.get('mobile_view', False) else 800
@@ -409,6 +416,12 @@ def main():
             else:
                 st.warning("Missing volume data for volume chart.")
 
+            # Set default chart zoom to last 200 candles (or all if less)
+            if len(df) > 200:
+                x_range = [df['timestamp'].iloc[-200], df['timestamp'].iloc[-1]]
+            else:
+                x_range = [df['timestamp'].iloc[0], df['timestamp'].iloc[-1]]
+
             # Update layout for better mobile viewing
             fig.update_layout(
                 height=chart_height,
@@ -421,7 +434,8 @@ def main():
                     y=1.02,
                     xanchor="right",
                     x=1
-                )
+                ),
+                xaxis=dict(range=x_range)
             )
 
             st.plotly_chart(fig, use_container_width=True)
