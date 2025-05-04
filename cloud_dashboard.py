@@ -35,11 +35,17 @@ st.markdown("""
         padding: 10px;
         border-radius: 5px;
         margin-bottom: 10px;
+        font-weight: 600;
         transition: background-color 0.3s, color 0.3s;
     }
     .st-dark .stMetric {
-        background-color: #222831 !important;
-        color: #f0f2f6 !important;
+        background-color: #181c20 !important;
+        color: #ffffff !important;
+        border: 1px solid #333 !important;
+        font-weight: 700;
+    }
+    .stMetricLabel, .stMetricValue, .stMetricDelta {
+        color: inherit !important;
     }
     @media (max-width: 768px) {
         .stMetric {
@@ -189,6 +195,10 @@ def main():
         show_ema21 = st.toggle('EMA-21', value=True)
         show_volume = st.toggle('Volume', value=True)
 
+        st.subheader("Chart Display Settings")
+        max_candles = len(data['price_history']) if 'price_history' in data else 100
+        num_candles = st.slider('Candles to display', min_value=20, max_value=max_candles, value=min(100, max_candles), step=10)
+
     # Load and display data
     data = load_bot_data()
     
@@ -239,6 +249,17 @@ def main():
         if 'price_history' in data:
             df = pd.DataFrame(data['price_history'])
             df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_localize('UTC').dt.tz_convert('Asia/Kolkata')
+            
+            # Only show the last num_candles
+            if len(df) > num_candles:
+                df = df.iloc[-num_candles:]
+            
+            # Set x and y axis ranges for visible candles
+            x_range = [df['timestamp'].iloc[0], df['timestamp'].iloc[-1]]
+            y_min = min(df['low'].min(), df['close'].min(), df['open'].min())
+            y_max = max(df['high'].max(), df['close'].max(), df['open'].max())
+            y_margin = (y_max - y_min) * 0.05
+            y_range = [y_min - y_margin, y_max + y_margin]
             
             # Make chart more mobile-friendly
             chart_height = 600 if st.session_state.get('mobile_view', False) else 800
@@ -416,12 +437,6 @@ def main():
             else:
                 st.warning("Missing volume data for volume chart.")
 
-            # Set default chart zoom to last 200 candles (or all if less)
-            if len(df) > 200:
-                x_range = [df['timestamp'].iloc[-200], df['timestamp'].iloc[-1]]
-            else:
-                x_range = [df['timestamp'].iloc[0], df['timestamp'].iloc[-1]]
-
             # Update layout for better mobile viewing
             fig.update_layout(
                 height=chart_height,
@@ -435,7 +450,8 @@ def main():
                     xanchor="right",
                     x=1
                 ),
-                xaxis=dict(range=x_range)
+                xaxis=dict(range=x_range),
+                yaxis=dict(range=y_range)
             )
 
             st.plotly_chart(fig, use_container_width=True)
