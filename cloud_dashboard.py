@@ -15,6 +15,7 @@ from bot import (
     calculate_pivot_levels, is_strong_candle, fetch_5m_ema,
     check_secondary_boosters
 )
+import numpy as np
 
 # Streamlit page config
 st.set_page_config(
@@ -99,11 +100,22 @@ def load_bot_data():
             st.error("No trading data available")
             return None
         print(f"Data loaded successfully: {len(str(data))} bytes")
-        return data
+        return to_native_types(data)
     except Exception as e:
         print(f"Error loading data: {str(e)}")
         st.error(f"Error loading data: {str(e)}")
         return None
+
+def to_native_types(obj):
+    """Recursively convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: to_native_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [to_native_types(i) for i in obj]
+    elif isinstance(obj, np.generic):
+        return obj.item()
+    else:
+        return obj
 
 def main():
     print("Entering main function...")
@@ -165,15 +177,9 @@ def main():
         show_vwap = st.toggle('VWAP', value=True)
         show_supertrend = st.toggle('SuperTrend', value=True)
         show_supertrend_bands = st.toggle('SuperTrend Bands', value=True)
-        show_atr = st.toggle('ATR', value=False)
-        show_ema9 = st.toggle('EMA-9', value=False)
-        show_ema21 = st.toggle('EMA-21', value=False)
-        show_obv = st.toggle('OBV (On-Balance Volume)', value=False)
-        show_obv_sma = st.toggle('OBV SMA', value=False)
-        show_keltner = st.toggle('Keltner Channel', value=False)
-        show_ema5m = st.toggle('5m EMA', value=False)
-        show_pivots = st.toggle('Pivot/R1/S1', value=False)
-        show_strong_candle = st.toggle('Strong Candle', value=False)
+        show_atr = st.toggle('ATR', value=True)
+        show_ema9 = st.toggle('EMA-9', value=True)
+        show_ema21 = st.toggle('EMA-21', value=True)
         show_volume = st.toggle('Volume', value=True)
 
     # Load and display data
@@ -328,115 +334,6 @@ def main():
                         y=df['ema21'],
                         name='EMA-21',
                         line=dict(color='red', width=1)
-                    ),
-                    row=1, col=1
-                )
-
-            # Add OBV if enabled
-            if show_obv and 'obv' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['obv'],
-                        name='OBV',
-                        line=dict(color='brown', width=1)
-                    ),
-                    row=2, col=1
-                )
-
-            # Add OBV SMA if enabled
-            if show_obv_sma and 'obv_sma' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['obv_sma'],
-                        name='OBV SMA',
-                        line=dict(color='gray', width=1, dash='dot')
-                    ),
-                    row=2, col=1
-                )
-
-            # Add Keltner Channel if enabled
-            if show_keltner and 'keltner_upper' in df.columns and 'keltner_lower' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['keltner_upper'],
-                        name='Keltner Upper',
-                        line=dict(color='magenta', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['keltner_lower'],
-                        name='Keltner Lower',
-                        line=dict(color='magenta', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-
-            # Add 5m EMA if enabled
-            if show_ema5m and 'ema_5m_now' in df.columns and 'ema_5m_prev' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['ema_5m_now'],
-                        name='5m EMA (now)',
-                        line=dict(color='black', width=1, dash='dot')
-                    ),
-                    row=1, col=1
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['ema_5m_prev'],
-                        name='5m EMA (prev)',
-                        line=dict(color='black', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-
-            # Add Pivot, R1, S1 if enabled
-            if show_pivots and 'pivot' in df.columns and 'r1' in df.columns and 's1' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['pivot'],
-                        name='Pivot',
-                        line=dict(color='teal', width=1, dash='dot')
-                    ),
-                    row=1, col=1
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['r1'],
-                        name='R1',
-                        line=dict(color='teal', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['s1'],
-                        name='S1',
-                        line=dict(color='teal', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-
-            # Add Strong Candle if enabled
-            if show_strong_candle and 'strong_candle' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=[row.close if bool(sc) else None for sc, row in zip(df['strong_candle'], df.itertuples())],
-                        name='Strong Candle',
-                        mode='markers',
-                        marker=dict(color='orange', size=8, symbol='star'),
                     ),
                     row=1, col=1
                 )
@@ -605,17 +502,22 @@ def display_market_data(data):
         st.markdown(f"Current Price: {market_data.get('current_price', 'N/A')} USDT")
         st.markdown(f"VWAP: {current_values.get('vwap', 'N/A')} USDT")
         st.markdown(f"ATR: {current_values.get('atr', 'N/A')} USDT")
+        st.markdown(f"ATR Stop Distance: {current_values.get('atr_stop_distance', 'N/A')} USDT")
     
     with col2:
         st.markdown("**Volume Data**")
         st.markdown(f"Current Volume: {current_values.get('volume', 'N/A')}")
         st.markdown(f"20-period Volume MA: {current_values.get('volume_ma', 'N/A')}")
         st.markdown(f"Volume Ratio: {current_values.get('volume_spike_ratio', 'N/A')}x")
+        st.markdown(f"Volume Spike: {'Yes' if current_values.get('volume_spike', False) else 'No'}")
     
     with col3:
         st.markdown("**Indicators**")
         supertrend = current_values.get('supertrend')
         st.markdown(f"SuperTrend: {'Bullish' if supertrend else 'Bearish'}")
+        st.markdown(f"EMA-9 > EMA-21: {'Yes' if current_values.get('ema9_above_ema21', False) else 'No'}")
+        st.markdown(f"UT Bot Signal: {current_values.get('ut_signal', 'N/A')}")
+        st.markdown(f"Trading Score: {current_values.get('score', 'N/A')}")
         
         # Safely calculate VWAP bands
         vwap = current_values.get('vwap')
@@ -699,6 +601,10 @@ def display_trade_management(data):
             events.append('🟡 **Breakeven:** SL moved to entry')
         if pos.get('trailing_activated', False):
             events.append('🔵 **Trailing Stop:** Active at 0.3%')
+        if pos.get('supertrend_flip_exit', False):
+            events.append('🔴 **SuperTrend Flip:** Exit triggered')
+        if pos.get('atr_stop_exit', False):
+            events.append('🔴 **ATR Stop:** Exit triggered')
         if not events:
             events.append('No advanced management events yet.')
         for e in events:

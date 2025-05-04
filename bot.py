@@ -607,25 +607,40 @@ def update_position_pnl(current_price):
             if new_stop < position['stop_loss']:
                 paper_trading['position']['stop_loss'] = new_stop
     
-    # Forced exit on 5m EMA slope <= 0
+    # --- New Exit Logic: SuperTrend flip (2-bar confirmation) and ATR-based stop ---
     df = fetch_price_data()
-    ema_now, ema_prev = fetch_5m_ema(df)
-    ema_slope = ema_now - ema_prev
-    if (position['side'] == 'long' and ema_slope <= 0) or \
-       (position['side'] == 'short' and ema_slope >= 0):
-        print("[INFO] 5m EMA slope flat/negative. Exiting remaining position.")
-        close_position(current_price, '5m EMA exit')
+    atr = df['atr'].iloc[-1] if 'atr' in df.columns else ta.volatility.AverageTrueRange(df['high'], df['low'], df['close'], window=14).average_true_range().iloc[-1]
+    supertrend = df['supertrend']
+    
+    # Track SuperTrend state for 2-bar confirmation
+    if len(supertrend) >= 3:
+        st_now = supertrend.iloc[-1]
+        st_prev = supertrend.iloc[-2]
+        st_prev2 = supertrend.iloc[-3]
+        # For long: exit if SuperTrend flips bearish for 2 bars
+        if position['side'] == 'long' and not st_now and not st_prev:
+            close_position(current_price, 'SuperTrend flip exit (2-bar confirm)')
+            return
+        # For short: exit if SuperTrend flips bullish for 2 bars
+        if position['side'] == 'short' and st_now and st_prev:
+            close_position(current_price, 'SuperTrend flip exit (2-bar confirm)')
+            return
+    
+    # ATR-based stop loss (0.5 × ATR from entry)
+    if position['side'] == 'long' and current_price <= entry - 0.5 * atr:
+        close_position(current_price, 'ATR stop loss (0.5x ATR)')
+        return
+    if position['side'] == 'short' and current_price >= entry + 0.5 * atr:
+        close_position(current_price, 'ATR stop loss (0.5x ATR)')
         return
     
     # Check for stop loss or take profit hits (for remaining position)
     if position['side'] == 'long':
         if current_price <= position['stop_loss']:
             close_position(current_price, 'Stop loss hit')
-        # take_profit is now set to a very high value after partial TP
     else:  # short
         if current_price >= position['stop_loss']:
             close_position(current_price, 'Stop loss hit')
-        # take_profit is now set to a very low value after partial TP
 
 def close_position(price, reason=''):
     """Close position and handle re-entry tracking"""
