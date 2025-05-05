@@ -571,6 +571,16 @@ def update_position_pnl(current_price):
     else:  # short
         paper_trading['position']['unrealized_pnl'] = (entry - current_price) * size * leverage
     
+    # ATR-based stop loss (0.7 × ATR from entry)
+    df = fetch_price_data()
+    atr = df['atr'].iloc[-1] if 'atr' in df.columns else ta.volatility.AverageTrueRange(df['high'], df['low'], df['close'], window=14).average_true_range().iloc[-1]
+    if position['side'] == 'long' and current_price <= entry - 0.7 * atr:
+        close_position(current_price, 'ATR stop loss (0.7x ATR)')
+        return
+    if position['side'] == 'short' and current_price >= entry + 0.7 * atr:
+        close_position(current_price, 'ATR stop loss (0.7x ATR)')
+        return
+
     # Move SL to breakeven at +0.3% profit
     if not position.get('breakeven_moved', False):
         profit_pct = ((current_price / entry - 1) * 100) if position['side'] == 'long' else ((entry / current_price - 1) * 100)
@@ -578,35 +588,44 @@ def update_position_pnl(current_price):
             paper_trading['position']['stop_loss'] = entry
             paper_trading['position']['breakeven_moved'] = True
             print("[INFO] Stop loss moved to breakeven!")
-    
-    # Partial take profit logic
+
+    # Take 50% profit at 1.4×ATR
     if not position.get('partial_tp_taken', False):
-        if (position['side'] == 'long' and current_price >= position['take_profit']) or \
-           (position['side'] == 'short' and current_price <= position['take_profit']):
-            # Check only EMA9/EMA21
-            df = fetch_price_data()
-            ema9 = ta.trend.ema_indicator(df['close'], window=9).iloc[-1]
-            ema21 = ta.trend.ema_indicator(df['close'], window=21).iloc[-1]
-            if (position['side'] == 'long' and ema9 > ema21) or \
-               (position['side'] == 'short' and ema9 < ema21):
-                # Take 50% profit, leave 50% running
+        if (position['side'] == 'long' and current_price >= entry + 1.4 * atr) or \
+           (position['side'] == 'short' and current_price <= entry - 1.4 * atr):
+            # Take 50% profit, leave 50% running
+            paper_trading['position']['size'] *= 0.5
+            paper_trading['position']['partial_tp_taken'] = True
+            print("[INFO] Partial take profit: 50% closed, 50% left to run.")
+            # Set trailing stop for remaining
+            paper_trading['position']['trailing_activated'] = True
+            # Set trailing stop at 0.3% from current price
+            if position['side'] == 'long':
+                paper_trading['position']['stop_loss'] = current_price * 0.997
+            else:
+                paper_trading['position']['stop_loss'] = current_price * 1.003
+            # Update take profit to a very high/low value so it doesn't trigger again
+            paper_trading['position']['take_profit'] = 1e10 if position['side'] == 'long' else -1e10
+
+    # SuperTrend flip: exit 50%, leave rest on trailing stop
+    supertrend = df['supertrend']
+    if len(supertrend) >= 2:
+        st_now = supertrend.iloc[-1]
+        st_prev = supertrend.iloc[-2]
+        # If SuperTrend flips, exit 50%, leave rest on trailing stop
+        if not position.get('supertrend_flip_taken', False):
+            if (position['side'] == 'long' and not st_now and st_prev) or \
+               (position['side'] == 'short' and st_now and not st_prev):
                 paper_trading['position']['size'] *= 0.5
-                paper_trading['position']['partial_tp_taken'] = True
-                print("[INFO] Partial take profit: 50% closed, 50% left to run.")
-                # Set trailing stop for remaining
+                paper_trading['position']['supertrend_flip_taken'] = True
+                print("[INFO] SuperTrend flip: 50% closed, trailing stop for rest.")
                 paper_trading['position']['trailing_activated'] = True
                 # Set trailing stop at 0.3% from current price
                 if position['side'] == 'long':
                     paper_trading['position']['stop_loss'] = current_price * 0.997
                 else:
                     paper_trading['position']['stop_loss'] = current_price * 1.003
-                # Update take profit to a very high/low value so it doesn't trigger again
-                paper_trading['position']['take_profit'] = 1e10 if position['side'] == 'long' else -1e10
-            else:
-                # If not, close full position
-                close_position(current_price, 'Take profit hit')
-                return
-    
+
     # Trailing stop for remaining 50%
     if position.get('trailing_activated', False):
         if position['side'] == 'long':
@@ -617,35 +636,8 @@ def update_position_pnl(current_price):
             new_stop = current_price * 1.003
             if new_stop < position['stop_loss']:
                 paper_trading['position']['stop_loss'] = new_stop
-    
-    # --- New Exit Logic: SuperTrend flip (2-bar confirmation) and ATR-based stop ---
-    df = fetch_price_data()
-    atr = df['atr'].iloc[-1] if 'atr' in df.columns else ta.volatility.AverageTrueRange(df['high'], df['low'], df['close'], window=14).average_true_range().iloc[-1]
-    supertrend = df['supertrend']
-    
-    # Track SuperTrend state for 2-bar confirmation
-    if len(supertrend) >= 3:
-        st_now = supertrend.iloc[-1]
-        st_prev = supertrend.iloc[-2]
-        st_prev2 = supertrend.iloc[-3]
-        # For long: exit if SuperTrend flips bearish for 2 bars
-        if position['side'] == 'long' and not st_now and not st_prev:
-            close_position(current_price, 'SuperTrend flip exit (2-bar confirm)')
-            return
-        # For short: exit if SuperTrend flips bullish for 2 bars
-        if position['side'] == 'short' and st_now and st_prev:
-            close_position(current_price, 'SuperTrend flip exit (2-bar confirm)')
-            return
-    
-    # ATR-based stop loss (0.5 × ATR from entry)
-    if position['side'] == 'long' and current_price <= entry - 0.5 * atr:
-        close_position(current_price, 'ATR stop loss (0.5x ATR)')
-        return
-    if position['side'] == 'short' and current_price >= entry + 0.5 * atr:
-        close_position(current_price, 'ATR stop loss (0.5x ATR)')
-        return
-    
-    # Check for stop loss or take profit hits (for remaining position)
+
+    # Final stop loss check for remaining position
     if position['side'] == 'long':
         if current_price <= position['stop_loss']:
             close_position(current_price, 'Stop loss hit')
@@ -839,21 +831,12 @@ def display_status_update(df, conditions, last_price):
     print(f"Current Price: ${last_price:.2f}")
     print(f"Current Balance: ${paper_trading['balance']:.2f}")
     print(f"Total PnL: ${paper_trading['total_pnl']:.2f}")
-    print(f"Win Rate: {(paper_trading['win_trades'] / len(paper_trading['trades'])*100 if paper_trading['trades'] else 0):.1f}%")
-    print("\nTrading Conditions:")
-    # Print volume ratio if possible
-    if 'volume' in df.columns:
-        volume_ma = df['volume'].rolling(window=20).mean().iloc[-1]
-        volume_ratio = df['volume'].iloc[-1] / volume_ma if volume_ma else 0
-        print(f"Volume Ratio: {volume_ratio:.2f}x (Threshold: 1.3x)")
-    # Print UT Bot and score
-    ut_signal = conditions.get('ut_signal', 0)
-    score = conditions.get('score', None)
-    print(f"UT Bot Alert: {'Long' if ut_signal == 1 else 'Short' if ut_signal == -1 else 'Neutral'}")
-    print(f"Score: {score if score is not None else 'N/A'}")
-    print("Decision Logic:")
-    print("- Score >= 1.5: Full Position\n- Score >= 1: Half Position\n- Otherwise: No Trade")
-    print("="*50)
+    print(f"Active Position: {paper_trading['position']['side'] if paper_trading['position']['side'] else 'None'}")
+    if paper_trading['position']['side']:
+        print(f"Entry Price: ${paper_trading['position']['entry_price']:.2f}")
+        print(f"Unrealized PnL: ${paper_trading['position']['unrealized_pnl']:.2f}")
+        print(f"Trailing Stop: ${paper_trading['position']['stop_loss']:.2f}" if paper_trading['position'].get('trailing_activated', False) else "Trailing Stop: Not activated")
+    print("="*50 + "\n")
 
 def calculate_obv(df):
     obv = [0]
@@ -1049,88 +1032,107 @@ if __name__ == "__main__":
                 time.sleep(5)
                 continue
 
-            # --- UT Bot Alert calculation ---
-            df = calculate_ut_bot_alert(df)
+            # --- UT Bot Alert calculation (key_value=2, atr_period=11) ---
+            df = calculate_ut_bot_alert(df, atr_period=11, key_value=2)
             ut_signal = df['ut_position'].iloc[-1]
             prev_ut_signal = df['ut_position'].iloc[-2] if len(df) > 1 else 0
-
-            atr = calculate_atr(df)
-            update_funding_rate()
             last_price = df['close'].iloc[-1]
+            trail_stop = df['trail_stop'].iloc[-1]
+            atr = df['atr'].iloc[-1] if 'atr' in df.columns else 0.0
 
-            # Update paper trading position PnL
-            update_position_pnl(last_price)
-
-            # Get indicators for secondary scoring
-            ema9, ema21 = calculate_emas(df)
-            supertrend_bullish = df['supertrend'].iloc[-1]
-            volume_ma = df['volume'].rolling(window=20).mean()
-            volume_spike = df['volume'].iloc[-1] > volume_ma.iloc[-1] * 1.05
-            ema_5m_now, ema_5m_prev = fetch_5m_ema(df)
-            ema_5m_slope_positive = (ema_5m_now is not None and ema_5m_prev is not None and ema_5m_now > ema_5m_prev)
-
-            # --- Primary trigger: UT Bot Alert ---
-            open_signal = None
-            if ut_signal == 1 and prev_ut_signal != 1:
-                open_signal = 'long'
-            elif ut_signal == -1 and prev_ut_signal != -1:
-                open_signal = 'short'
-
-            # --- Secondary scoring ---
-            score = 0
-            if open_signal:
-                # EMA9 > EMA21 condition
-                if (open_signal == 'long' and ema9.iloc[-1] > ema21.iloc[-1]) or \
-                   (open_signal == 'short' and ema9.iloc[-1] < ema21.iloc[-1]):
-                    score += 1
-                
-                # SuperTrend alignment condition
-                if (open_signal == 'long' and supertrend_bullish) or \
-                   (open_signal == 'short' and not supertrend_bullish):
-                    score += 0.5
-                
-                # Volume spike condition
-                if volume_spike:
-                    score += 0.5
-                
-                # 5m EMA slope condition
-                if (open_signal == 'long' and ema_5m_slope_positive) or \
-                   (open_signal == 'short' and not ema_5m_slope_positive):
-                    score += 1
-
-            # --- Position sizing decision ---
-            position_size = 0
-            if open_signal:
-                if score >= 2:
-                    position_size = (paper_trading['balance'] * 0.05) / last_price  # Full position
-                    print(f"[UT BOT] {open_signal.upper()} signal: FULL position (score={score})")
-                elif score >= 1:
-                    position_size = (paper_trading['balance'] * 0.025) / last_price  # Half position
-                    print(f"[UT BOT] {open_signal.upper()} signal: HALF position (score={score})")
-                else:
-                    print(f"[UT BOT] {open_signal.upper()} signal: Not enough confirmations (score={score}), skipping.")
-                    open_signal = None
-
-            # --- Open position if signal and size ---
             current_position = paper_trading['position']
-            if open_signal and current_position['side'] is None and position_size > 0:
-                open_position(open_signal, position_size, last_price)
 
-            # Save data for dashboard - different intervals based on position status
-            if paper_trading['position']['side'] is not None:
-                if current_time - last_summary_time >= 60:
-                    save_bot_data(df, last_price, atr.iloc[-1] if hasattr(atr, 'iloc') else atr)
-                    display_status_update(df, {'ut_signal': ut_signal, 'score': score}, last_price)
-                    last_summary_time = current_time
-            else:
-                if current_time - last_summary_time >= 300:
-                    save_bot_data(df, last_price, atr.iloc[-1] if hasattr(atr, 'iloc') else atr)
-                    display_status_update(df, {'ut_signal': ut_signal, 'score': score}, last_price)
-                    last_summary_time = current_time
+            # --- Entry/Exit Logic ---
+            # On Buy signal
+            if ut_signal == 1 and prev_ut_signal != 1:
+                if current_position['side'] != 'long':
+                    if current_position['side'] == 'short':
+                        close_position(last_price, 'Close short for UT Bot Buy')
+                        print(f"[EXIT] Closed short at {last_price:.2f} for UT Bot Buy")
+                    position_size = (paper_trading['balance'] * 0.05) / last_price
+                    paper_trading['position'] = {
+                        'side': 'long',
+                        'size': position_size,
+                        'entry_price': last_price,
+                        'leverage': 10,
+                        'unrealized_pnl': 0.0,
+                        'stop_loss': 0.0,  # No SL at start
+                        'take_profit': 0.0,
+                        'trailing_activated': False,
+                        'trailing_start_price': last_price
+                    }
+                    print(f"[ENTRY] Long at {last_price:.2f} (UT Bot Buy)")
 
-            # Sleep logic
-            sleep_time = 5 if paper_trading['position']['side'] is not None else 60
-            time.sleep(sleep_time)
+            # On Sell signal
+            if ut_signal == -1 and prev_ut_signal != -1:
+                if current_position['side'] != 'short':
+                    if current_position['side'] == 'long':
+                        close_position(last_price, 'Close long for UT Bot Sell')
+                        print(f"[EXIT] Closed long at {last_price:.2f} for UT Bot Sell")
+                    position_size = (paper_trading['balance'] * 0.05) / last_price
+                    paper_trading['position'] = {
+                        'side': 'short',
+                        'size': position_size,
+                        'entry_price': last_price,
+                        'leverage': 10,
+                        'unrealized_pnl': 0.0,
+                        'stop_loss': 0.0,  # No SL at start
+                        'take_profit': 0.0,
+                        'trailing_activated': False,
+                        'trailing_start_price': last_price
+                    }
+                    print(f"[ENTRY] Short at {last_price:.2f} (UT Bot Sell)")
+
+            # --- Position Management ---
+            if current_position['side'] in ['long', 'short']:
+                entry = current_position['entry_price']
+                size = current_position['size']
+                direction = 1 if current_position['side'] == 'long' else -1
+                move_in_favor = (last_price - entry) * direction
+                move_pct = (last_price / entry - 1) * 100 * direction
+
+                # Activate trailing stop if price moves 0.5% or 0.5xATR in favor
+                if not current_position.get('trailing_activated', False):
+                    if move_pct >= 0.5 or move_in_favor >= 0.5 * atr:
+                        paper_trading['position']['trailing_activated'] = True
+                        if current_position['side'] == 'long':
+                            paper_trading['position']['stop_loss'] = last_price - 0.3 * atr
+                        else:
+                            paper_trading['position']['stop_loss'] = last_price + 0.3 * atr
+                        print(f"[INFO] Trailing stop activated at {paper_trading['position']['stop_loss']:.2f}")
+
+                # Update trailing stop if activated
+                if current_position.get('trailing_activated', False):
+                    if current_position['side'] == 'long':
+                        new_stop = last_price - 0.3 * atr
+                        if new_stop > current_position['stop_loss']:
+                            paper_trading['position']['stop_loss'] = new_stop
+                    else:
+                        new_stop = last_price + 0.3 * atr
+                        if new_stop < current_position['stop_loss']:
+                            paper_trading['position']['stop_loss'] = new_stop
+
+                # Exit if UT Bot flips
+                if (current_position['side'] == 'long' and ut_signal == -1 and prev_ut_signal != -1) or \
+                   (current_position['side'] == 'short' and ut_signal == 1 and prev_ut_signal != 1):
+                    close_position(last_price, 'UT Bot Flip Exit')
+                    print(f"[EXIT] UT Bot Flip at {last_price:.2f}")
+                # Exit if price hits trailing stop
+                elif current_position.get('trailing_activated', False):
+                    if (current_position['side'] == 'long' and last_price < current_position['stop_loss']) or \
+                       (current_position['side'] == 'short' and last_price > current_position['stop_loss']):
+                        close_position(last_price, 'Trailing Stop Exit')
+                        print(f"[EXIT] Trailing Stop at {last_price:.2f}")
+                # Update unrealized PnL
+                paper_trading['position']['unrealized_pnl'] = (last_price - entry) * size * direction * 10
+
+            # Save data for dashboard
+            if current_time - last_summary_time >= 30:
+                save_bot_data(df, last_price, atr)
+                display_status_update(df, {'ut_signal': ut_signal}, last_price)
+                last_summary_time = current_time
+
+            time.sleep(5)
 
         except Exception as e:
             print("Exception in main trading loop:", e)

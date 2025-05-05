@@ -187,13 +187,8 @@ def main():
         # Chart indicator toggles
         st.subheader("Chart Indicators")
         show_ut_bot = st.toggle('UT Bot Alert', value=True)
-        show_vwap = st.toggle('VWAP', value=True)
-        show_supertrend = st.toggle('SuperTrend', value=True)
-        show_supertrend_bands = st.toggle('SuperTrend Bands', value=True)
-        show_atr = st.toggle('ATR', value=True)
-        show_ema9 = st.toggle('EMA-9', value=True)
-        show_ema21 = st.toggle('EMA-21', value=True)
-        show_volume = st.toggle('Volume', value=True)
+        show_trail_stop = st.toggle('UT Bot Trail Stop', value=True)
+        show_price = st.toggle('Price', value=True)
 
         st.subheader("Chart Display Settings")
         max_candles = len(data['price_history']) if 'price_history' in data else 100
@@ -207,8 +202,7 @@ def main():
         with col1:
             st.metric(
                 "Current Balance",
-                f"${data['balance']:.2f}",
-                f"{data['roi']:.2f}%"
+                f"${data['balance']:.2f}"
             )
         
         with col2:
@@ -219,15 +213,8 @@ def main():
         
         with col3:
             st.metric(
-                "Win Rate",
-                f"{data['win_rate']:.1f}%",
-                f"{data['win_trades']}/{data['total_trades']} trades"
-            )
-        
-        with col4:
-            st.metric(
                 "Current Price",
-                f"${data['market_data']['current_price']:.2f}",
+                f"${data['market_data']['current_price']:.2f}"
             )
 
         # Display trading conditions
@@ -269,8 +256,8 @@ def main():
                               vertical_spacing=0.05,
                               row_heights=[0.7, 0.3])
 
-            # Price chart with trades and indicators
-            if all(col in df.columns for col in ['open', 'high', 'low', 'close']):
+            # Price chart
+            if show_price and all(col in df.columns for col in ['open', 'high', 'low', 'close']):
                 fig.add_trace(
                     go.Candlestick(
                         x=df['timestamp'],
@@ -282,97 +269,14 @@ def main():
                     ),
                     row=1, col=1
                 )
-            else:
-                st.warning("Missing OHLC data for price chart.")
 
-            # Add VWAP if enabled
-            if show_vwap and 'vwap' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['vwap'],
-                        name='VWAP',
-                        line=dict(color='purple', width=1)
-                    ),
-                    row=1, col=1
-                )
-
-            # Add SuperTrend if enabled
-            if show_supertrend and 'supertrend' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=[row.close if bool(st) else None for st, row in zip(df['supertrend'], df.itertuples())],
-                        name='SuperTrend',
-                        line=dict(color='blue', width=2, dash='dot')
-                    ),
-                    row=1, col=1
-                )
-
-            # Add SuperTrend Bands if enabled
-            if show_supertrend_bands and 'supertrend_upper' in df.columns and 'supertrend_lower' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['supertrend_upper'],
-                        name='SuperTrend Upper',
-                        line=dict(color='blue', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['supertrend_lower'],
-                        name='SuperTrend Lower',
-                        line=dict(color='blue', width=1, dash='dash')
-                    ),
-                    row=1, col=1
-                )
-
-            # Add ATR if enabled
-            if show_atr and 'atr' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['atr'],
-                        name='ATR',
-                        line=dict(color='orange', width=1, dash='dot')
-                    ),
-                    row=2, col=1
-                )
-
-            # Add EMA-9 if enabled
-            if show_ema9 and 'ema9' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['ema9'],
-                        name='EMA-9',
-                        line=dict(color='green', width=1)
-                    ),
-                    row=1, col=1
-                )
-
-            # Add EMA-21 if enabled
-            if show_ema21 and 'ema21' in df.columns:
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['timestamp'],
-                        y=df['ema21'],
-                        name='EMA-21',
-                        line=dict(color='red', width=1)
-                    ),
-                    row=1, col=1
-                )
-
-            # Add UT Bot Alert if enabled
+            # UT Bot Alert signals
             if show_ut_bot and 'ut_position' in df.columns:
                 fig.add_trace(
                     go.Scatter(
                         x=df['timestamp'],
                         y=[row.close if ut == 1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
-                        name='UT Bot Long',
+                        name='UT Bot Buy',
                         mode='markers',
                         marker=dict(color='lime', size=10, symbol='triangle-up'),
                     ),
@@ -382,43 +286,27 @@ def main():
                     go.Scatter(
                         x=df['timestamp'],
                         y=[row.close if ut == -1 else None for ut, row in zip(df['ut_position'], df.itertuples())],
-                        name='UT Bot Short',
+                        name='UT Bot Sell',
                         mode='markers',
                         marker=dict(color='red', size=10, symbol='triangle-down'),
                     ),
                     row=1, col=1
                 )
-                if 'trail_stop' in df.columns:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=df['timestamp'],
-                            y=df['trail_stop'],
-                            name='UT Bot Trail Stop',
-                            line=dict(color='orange', width=1, dash='dot')
-                        ),
-                        row=1, col=1
-                    )
 
-            # Add trades to the chart
-            for trade in data['recent_trades']:
-                if 'timestamp' in trade and 'entry' in trade:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[trade['timestamp']],
-                            y=[trade['entry']],
-                            mode='markers',
-                            marker=dict(
-                                symbol='triangle-up' if trade['side'] == 'long' else 'triangle-down',
-                                size=12,
-                                color='green' if trade['side'] == 'long' else 'red'
-                            ),
-                            name=f"{trade['side'].capitalize()} Entry"
-                        ),
-                        row=1, col=1
-                    )
+            # UT Bot Trailing Stop
+            if show_trail_stop and 'trail_stop' in df.columns:
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['timestamp'],
+                        y=df['trail_stop'],
+                        name='UT Bot Trail Stop',
+                        line=dict(color='orange', width=1, dash='dot')
+                    ),
+                    row=1, col=1
+                )
 
             # Volume subplot if enabled
-            if show_volume and 'volume' in df.columns:
+            if 'volume' in df.columns:
                 fig.add_trace(
                     go.Bar(x=df['timestamp'], y=df['volume'], name='Volume'),
                     row=2, col=1
