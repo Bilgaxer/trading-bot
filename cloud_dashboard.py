@@ -385,6 +385,10 @@ def main():
         st.subheader("Recent Trades")
         if data['recent_trades']:
             trades_df = pd.DataFrame(data['recent_trades'])
+            if 'entry_time' not in trades_df.columns:
+                trades_df['entry_time'] = '-'
+            if 'exit_time' not in trades_df.columns:
+                trades_df['exit_time'] = '-'
             trades_df['Entry Time'] = trades_df['entry_time']
             trades_df['Exit Time'] = trades_df['exit_time']
             trades_df = trades_df[['side', 'entry', 'exit', 'pnl', 'reason', 'Entry Time', 'Exit Time']]
