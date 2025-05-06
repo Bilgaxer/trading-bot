@@ -363,7 +363,7 @@ def main():
 
         # Performance metrics
         st.subheader("Performance")
-        perf_cols = st.columns(4)
+        perf_cols = st.columns(5)
         
         with perf_cols[0]:
             st.metric("Daily PnL", f"${data['performance_summary']['daily_pnl']:.2f}")
@@ -377,12 +377,16 @@ def main():
         with perf_cols[3]:
             st.metric("Worst", f"${data['performance_summary']['worst_trade']:.2f}")
 
+        with perf_cols[4]:
+            win_rate = (data['win_trades'] / data['total_trades'] * 100) if data['total_trades'] > 0 else 0
+            st.metric("Win Rate", f"{win_rate:.1f}%")
+
         # Recent trades
         st.subheader("Recent Trades")
         if data['recent_trades']:
             trades_df = pd.DataFrame(data['recent_trades'])
-            trades_df['Entry Time'] = pd.to_datetime(trades_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
-            trades_df['Exit Time'] = pd.to_datetime(trades_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            trades_df['Entry Time'] = trades_df['entry_time']
+            trades_df['Exit Time'] = trades_df['exit_time']
             trades_df = trades_df[['side', 'entry', 'exit', 'pnl', 'reason', 'Entry Time', 'Exit Time']]
             st.dataframe(trades_df, use_container_width=True)
         else:
