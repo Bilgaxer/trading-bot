@@ -377,15 +377,16 @@ def main():
         with perf_cols[3]:
             st.metric("Worst", f"${data['performance_summary']['worst_trade']:.2f}")
 
-        # Recent trades table
+        # Recent trades
+        st.subheader("Recent Trades")
         if data['recent_trades']:
-            st.subheader("Recent Trades")
             trades_df = pd.DataFrame(data['recent_trades'])
-            st.dataframe(
-                trades_df,
-                use_container_width=True,
-                hide_index=True
-            )
+            trades_df['Entry Time'] = pd.to_datetime(trades_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            trades_df['Exit Time'] = pd.to_datetime(trades_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            trades_df = trades_df[['side', 'entry', 'exit', 'pnl', 'reason', 'Entry Time', 'Exit Time']]
+            st.dataframe(trades_df, use_container_width=True)
+        else:
+            st.write("No recent trades")
 
         # Last update time in sidebar
         st.sidebar.write(f"Last Updated: {data['performance_summary']['last_update']}")

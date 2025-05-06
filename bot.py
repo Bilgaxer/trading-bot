@@ -1096,19 +1096,19 @@ if __name__ == "__main__":
                     if move_pct >= 0.5 or move_in_favor >= 0.5 * atr:
                         paper_trading['position']['trailing_activated'] = True
                         if current_position['side'] == 'long':
-                            paper_trading['position']['stop_loss'] = last_price - 0.3 * atr
+                            paper_trading['position']['stop_loss'] = last_price - 1.0 * atr
                         else:
-                            paper_trading['position']['stop_loss'] = last_price + 0.3 * atr
+                            paper_trading['position']['stop_loss'] = last_price + 1.0 * atr
                         print(f"[INFO] Trailing stop activated at {paper_trading['position']['stop_loss']:.2f}")
 
                 # Update trailing stop if activated
                 if current_position.get('trailing_activated', False):
                     if current_position['side'] == 'long':
-                        new_stop = last_price - 0.3 * atr
+                        new_stop = last_price - 1.0 * atr
                         if new_stop > current_position['stop_loss']:
                             paper_trading['position']['stop_loss'] = new_stop
                     else:
-                        new_stop = last_price + 0.3 * atr
+                        new_stop = last_price + 1.0 * atr
                         if new_stop < current_position['stop_loss']:
                             paper_trading['position']['stop_loss'] = new_stop
 
