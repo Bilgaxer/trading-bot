@@ -398,19 +398,13 @@ def save_bot_data(df, last_price, atr_value):
         import traceback
         traceback.print_exc()  # Print full error traceback for debugging
 
-def calculate_position_size(current_price, volume_ratio):
-    """Calculate position size based on volume ratio:
-    - 1.3x volume = 0.5% capital (initial position)
-    - 1.7x volume = 1% capital (add to position)
-    - 2.0x volume = 5% capital (max position size)
+def calculate_position_size(current_price, risk_percent=1, stop_loss_percent=0.1, leverage=10):
+    """Calculate position size based on risk management formula:
+    Position Size = [(Account Capital × Risk %) ÷ (Stop Loss %)]/Leverage
     """
-    if volume_ratio >= 2.0:
-        return (paper_trading['balance'] * 0.05) / current_price  # 5% max position
-    elif volume_ratio >= 1.7:
-        return (paper_trading['balance'] * 0.01) / current_price  # 1% position
-    elif volume_ratio >= 1.3:
-        return (paper_trading['balance'] * 0.005) / current_price  # 0.5% initial position
-    return 0
+    account_capital = paper_trading['balance']
+    position_size = ((account_capital * (risk_percent/100)) / (stop_loss_percent/100)) / leverage
+    return position_size / current_price  # Convert to BTC amount
 
 def open_position(side, size, price, stop_loss=None, take_profit=None):
     """Open a new position with updated risk management"""
@@ -1059,47 +1053,42 @@ if __name__ == "__main__":
 
             current_position = paper_trading['position']
 
-            # Entry/Exit Logic
-            if ut_signal == 1 and prev_ut_signal != 1 and current_slope > 0:
-                # Buy signal: UT Bot is buy AND ZLSMA slope is positive
-                if current_position['side'] != 'long':
-                    if current_position['side'] == 'short':
-                        close_position(last_price, 'Close short for UT Bot Buy + ZLSMA')
-                    position_size = (paper_trading['balance'] * 0.05) / last_price
+            # Trading Logic
+            if not current_position:
+                # Check for long entry
+                if ut_signal == 1 and prev_ut_signal != 1 and current_slope > 0:
+                    position_size = calculate_position_size(last_price)
                     paper_trading['position'] = {
                         'side': 'long',
                         'size': position_size,
                         'entry_price': last_price,
                         'leverage': 10,
                         'unrealized_pnl': 0.0,
-                        'stop_loss': 0.0,  # No initial stop loss
+                        'stop_loss': last_price * 0.999,  # 0.1% below entry
                         'take_profit': 0.0,
                         'trailing_activated': False,
                         'entry_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }
-                    print(f"[ENTRY] Long at {last_price:.2f} (UT Bot Buy + ZLSMA positive)")
-
-            elif ut_signal == -1 and prev_ut_signal != -1 and current_slope < 0:
-                # Sell signal: UT Bot is sell AND ZLSMA slope is negative
-                if current_position['side'] != 'short':
-                    if current_position['side'] == 'long':
-                        close_position(last_price, 'Close long for UT Bot Sell + ZLSMA')
-                    position_size = (paper_trading['balance'] * 0.05) / last_price
+                    print(f"[ENTRY] Long at {last_price:.2f}")
+                
+                # Check for short entry
+                elif ut_signal == -1 and prev_ut_signal != -1 and current_slope < 0:
+                    position_size = calculate_position_size(last_price)
                     paper_trading['position'] = {
                         'side': 'short',
                         'size': position_size,
                         'entry_price': last_price,
                         'leverage': 10,
                         'unrealized_pnl': 0.0,
-                        'stop_loss': 0.0,  # No initial stop loss
+                        'stop_loss': last_price * 1.001,  # 0.1% above entry
                         'take_profit': 0.0,
                         'trailing_activated': False,
                         'entry_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }
-                    print(f"[ENTRY] Short at {last_price:.2f} (UT Bot Sell + ZLSMA negative)")
-
+                    print(f"[ENTRY] Short at {last_price:.2f}")
+            
             # Position Management
-            if current_position['side'] in ['long', 'short']:
+            elif current_position['side'] in ['long', 'short']:
                 entry = current_position['entry_price']
                 size = current_position['size']
                 direction = 1 if current_position['side'] == 'long' else -1
@@ -1107,21 +1096,55 @@ if __name__ == "__main__":
                 # Calculate profit percentage
                 profit_pct = ((last_price / entry - 1) * 100) if current_position['side'] == 'long' else ((entry / last_price - 1) * 100)
                 
-                # Add stop loss at breakeven after 0.3% profit
+                # Move stop loss to breakeven after 0.3% profit
                 if not current_position.get('breakeven_moved', False) and profit_pct >= 0.3:
                     paper_trading['position']['stop_loss'] = entry
                     paper_trading['position']['breakeven_moved'] = True
-                    print(f"[INFO] Stop loss added at breakeven at {entry:.2f}")
+                    print(f"[INFO] Stop loss moved to breakeven at {entry:.2f}")
                 
                 # Update unrealized PnL
                 paper_trading['position']['unrealized_pnl'] = (last_price - entry) * size * direction * 10
 
-                # Exit if stop loss is hit (only if it's been set)
-                if current_position['stop_loss'] > 0:
-                    if (current_position['side'] == 'long' and last_price <= current_position['stop_loss']) or \
-                       (current_position['side'] == 'short' and last_price >= current_position['stop_loss']):
-                        close_position(last_price, 'Stop loss hit')
-                        print(f"[EXIT] Stop loss at {last_price:.2f}")
+                # Exit if stop loss is hit
+                if (current_position['side'] == 'long' and last_price <= current_position['stop_loss']) or \
+                   (current_position['side'] == 'short' and last_price >= current_position['stop_loss']):
+                    close_position(last_price, 'Stop loss hit')
+                    print(f"[EXIT] Stop loss at {last_price:.2f}")
+                
+                # Check for position flip
+                if current_position['side'] == 'long' and ut_signal == -1 and current_slope < 0:
+                    close_position(last_price, 'Signal flip to sell')
+                    # Immediately enter short
+                    position_size = calculate_position_size(last_price)
+                    paper_trading['position'] = {
+                        'side': 'short',
+                        'size': position_size,
+                        'entry_price': last_price,
+                        'leverage': 10,
+                        'unrealized_pnl': 0.0,
+                        'stop_loss': 0.0,
+                        'take_profit': 0.0,
+                        'trailing_activated': False,
+                        'entry_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    print(f"[FLIP] Long to Short at {last_price:.2f}")
+                
+                elif current_position['side'] == 'short' and ut_signal == 1 and current_slope > 0:
+                    close_position(last_price, 'Signal flip to buy')
+                    # Immediately enter long
+                    position_size = calculate_position_size(last_price)
+                    paper_trading['position'] = {
+                        'side': 'long',
+                        'size': position_size,
+                        'entry_price': last_price,
+                        'leverage': 10,
+                        'unrealized_pnl': 0.0,
+                        'stop_loss': 0.0,
+                        'take_profit': 0.0,
+                        'trailing_activated': False,
+                        'entry_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    print(f"[FLIP] Short to Long at {last_price:.2f}")
 
             # Save data for dashboard
             if current_time - last_summary_time >= 30:

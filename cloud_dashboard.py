@@ -26,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add custom CSS for better mobile view
+# Add custom CSS for better mobile view and dark mode
 st.markdown("""
     <style>
     .stMetric {
@@ -39,7 +39,7 @@ st.markdown("""
         transition: background-color 0.3s, color 0.3s;
     }
     .st-dark .stMetric {
-        background-color: #181c20 !important;
+        background-color: #1E1E1E !important;
         color: #ffffff !important;
         border: 1px solid #333 !important;
         font-weight: 700;
@@ -150,26 +150,8 @@ def main():
         print("Bot data loaded successfully")
         has_active_position = data and data['position']['side'] is not None
         
-        if has_active_position:
-            refresh_interval = st.slider(
-                "Auto-refresh interval (seconds)",
-                min_value=10,
-                max_value=60,
-                value=30,
-                step=10,
-                key="refresh_interval",
-                help="Active position detected - updating every minute"
-            )
-        else:
-            refresh_interval = st.slider(
-                "Auto-refresh interval (seconds)",
-                min_value=60,
-                max_value=300,
-                value=300,
-                step=60,
-                key="refresh_interval",
-                help="No active position - updating every 5 minutes"
-            )
+        # Set fixed refresh interval to 10 seconds
+        refresh_interval = 10
         
         # Manual refresh button
         if st.button("🔄 Refresh Now"):
@@ -177,9 +159,9 @@ def main():
             st.rerun()
         
         # Auto-refresh status
-        st.write(f"Next auto-refresh in: {refresh_interval} seconds")
+        st.write(f"Auto-refreshing every {refresh_interval} seconds")
         if has_active_position:
-            st.info("Active position detected - faster updates enabled")
+            st.info("Active position detected")
         
         # Mobile view toggle
         st.toggle('Mobile View', key='mobile_view')
@@ -198,20 +180,31 @@ def main():
     data = load_bot_data()
     
     if data:
-        # Update key metrics
+        # Update key metrics with proper formatting
         with col1:
             st.metric(
                 "Current Balance",
-                f"${data['balance']:.2f}"
+                f"${data['balance']:.2f}",
+                delta=f"${data['total_pnl']:.2f}"
             )
         
         with col2:
+            daily_pnl = data['performance_summary']['daily_pnl']
+            daily_pnl_color = "green" if daily_pnl >= 0 else "red"
             st.metric(
-                "Total PnL",
-                f"${data['total_pnl']:.2f}"
+                "Daily PnL",
+                f"${daily_pnl:.2f}",
+                delta_color=daily_pnl_color
             )
         
         with col3:
+            st.metric(
+                "Total PnL",
+                f"${data['total_pnl']:.2f}",
+                delta=f"{((data['balance'] / data['initial_balance']) - 1) * 100:.1f}%"
+            )
+
+        with col4:
             st.metric(
                 "Current Price",
                 f"${data['market_data']['current_price']:.2f}"
@@ -361,12 +354,12 @@ def main():
                 st.write(f"Stop: ${data['position']['stop_loss']:.2f}")
                 st.write(f"Target: ${data['position']['take_profit']:.2f}")
 
-        # Performance metrics
+        # Performance metrics with proper formatting
         st.subheader("Performance")
         perf_cols = st.columns(5)
         
         with perf_cols[0]:
-            st.metric("Daily PnL", f"${data['performance_summary']['daily_pnl']:.2f}")
+            st.metric("Win Rate", f"{data['performance_summary'].get('win_rate', 0):.1f}%")
         
         with perf_cols[1]:
             st.metric("Avg Trade", f"${data['performance_summary']['avg_trade_pnl']:.2f}")
@@ -378,8 +371,8 @@ def main():
             st.metric("Worst", f"${data['performance_summary']['worst_trade']:.2f}")
 
         with perf_cols[4]:
-            win_rate = (data['win_trades'] / data['total_trades'] * 100) if data['total_trades'] > 0 else 0
-            st.metric("Win Rate", f"{win_rate:.1f}%")
+            total_trades = data['performance_summary'].get('total_trades', 0)
+            st.metric("Total Trades", f"{total_trades}")
 
         # Recent trades
         st.subheader("Recent Trades")
@@ -538,4 +531,7 @@ def display_trade_management(data):
             st.markdown(e)
 
 if __name__ == "__main__":
-    main() 
+    main()
+    # Add auto-refresh
+    time.sleep(10)
+    st.rerun() 
